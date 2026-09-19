@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}仪表盘 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}仪表盘{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-3">
+    <div class="small opacity-75">馆藏图书</div><div class="fs-3 fw-bold">{{ m.book_total or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-3">
+    <div class="small opacity-75">在借册数</div><div class="fs-3 fw-bold">{{ m.out_total or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-danger"><div class="card-body py-3">
+    <div class="small opacity-75">逾期未还</div><div class="fs-3 fw-bold">{{ m.overdue_total or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-warning"><div class="card-body py-3">
+    <div class="small opacity-75">待缴罚款(元)</div><div class="fs-3 fw-bold">{{ '%.2f'|format((m.fine_unpaid or 0)/100) }}</div>
+  </div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2">
+    <div class="text-muted small">注册读者</div><div class="fs-5 fw-semibold">{{ m.reader_total or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2">
+    <div class="text-muted small">今日借出</div><div class="fs-5 fw-semibold">{{ m.today_borrow or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2">
+    <div class="text-muted small">今日归还</div><div class="fs-5 fw-semibold">{{ m.today_return or 0 }}</div>
+  </div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2">
+    <div class="text-muted small">待处理预约</div><div class="fs-5 fw-semibold">{{ m.waiting_resv or 0 }}</div>
+  </div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">图书热度 TOP 5</div><div class="card-body">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>书名</th><th>作者</th><th class="text-end">借阅次数</th></tr></thead>
+        <tbody>
+        {% for r in hot %}<tr><td>{{ loop.index }}</td><td>{{ r.title }}</td><td class="text-muted">{{ r.author or '-' }}</td><td class="text-end">{{ r.c }}</td></tr>
+        {% else %}<tr><td colspan="4" class="text-muted text-center">暂无借阅数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">最近操作</div><div class="card-body p-0">
+      <ul class="list-group list-group-flush">
+        {% for r in recent %}<li class="list-group-item py-2 small">
+          <span class="badge text-bg-light text-dark me-1">{{ r.action }}</span>{{ r.detail }}
+          <span class="text-muted float-end">{{ r.created_at[5:16] }}</span>
+        </li>{% else %}<li class="list-group-item text-muted">暂无日志</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

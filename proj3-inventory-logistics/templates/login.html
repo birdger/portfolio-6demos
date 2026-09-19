@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}登录 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}登录{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h4 class="text-center mb-1">{{ APP_NAME }}</h4>
+        <p class="text-center text-muted small mb-4">{{ APP_SUBTITLE }}</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} py-2 small">{{ msg }}</div>
+          {% endfor %}
+        {% endwith %}
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">用户名</label>
+            <input class="form-control" name="username" autofocus required placeholder="admin">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">密码</label>
+            <input class="form-control" type="password" name="password" required placeholder="••••••">
+          </div>
+          <button class="btn btn-primary w-100">登 录</button>
+        </form>
+        <div class="text-center mt-3 small text-muted">
+          演示账号: admin / admin123 · demo / demo123
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

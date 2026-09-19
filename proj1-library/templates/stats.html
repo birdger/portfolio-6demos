@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}统计报表 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}统计报表{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">近 6 个月借阅趋势</div><div class="card-body">
+      <div id="trendChart" style="height:260px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">馆藏分类分布</div><div class="card-body">
+      <div id="catChart" style="height:260px"></div>
+    </div></div>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">热门图书 TOP 10</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>书名</th><th>作者</th><th>分类</th><th class="text-end">借阅</th></tr></thead>
+        <tbody>
+        {% for r in rank %}<tr>
+          <td class="text-muted">{{ loop.index }}</td><td>{{ r.title }}</td>
+          <td class="small text-muted">{{ r.author or '-' }}</td>
+          <td><span class="badge text-bg-light text-dark">{{ r.category or '-' }}</span></td>
+          <td class="text-end">{{ r.c }}</td>
+        </tr>{% else %}<tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">活跃读者 TOP 8</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>读者</th><th>卡号</th><th class="text-end">借阅次数</th><th class="text-end">累计罚款(元)</th></tr></thead>
+        <tbody>
+        {% for r in top_readers %}<tr>
+          <td class="text-muted">{{ loop.index }}</td><td>{{ r.name }}</td>
+          <td class="small text-muted">{{ r.card_no }}</td>
+          <td class="text-end">{{ r.c }}</td>
+          <td class="text-end">{{ '%.2f'|format(r.fine/100) }}</td>
+        </tr>{% else %}<tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const months = {{ months|tojson }}, series = {{ series|tojson }};
+  const cats = {{ cats|tojson }};
+  echarts.init(document.getElementById('trendChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    grid: {left: 36, right: 16, top: 20, bottom: 24},
+    xAxis: {type: 'category', data: months},
+    yAxis: {type: 'value', minInterval: 1},
+    series: [{type: 'line', smooth: true, areaStyle: {opacity: .15},
+              data: series, itemStyle: {color: '#4f46e5'}}]
+  });
+  echarts.init(document.getElementById('catChart')).setOption({
+    tooltip: {trigger: 'item', formatter: '{b}: {c} 册 ({d}%)'},
+    legend: {bottom: 0, type: 'scroll'},
+    series: [{type: 'pie', radius: ['38%', '66%'],
+              data: cats.map(function (x) { return {name: x.cat, value: x.c}; }),
+              label: {formatter: '{b}\n{c}'}}]
+  });
+</script>
+{% endblock %}

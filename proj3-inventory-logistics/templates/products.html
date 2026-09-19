@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}商品管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}商品管理{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form class="row g-2 align-items-center" method="get">
+      <div class="col-auto"><input class="form-control form-control-sm" name="kw" value="{{ kw }}" placeholder="商品名称 / 编码"></div>
+      <div class="col-auto"><button class="btn btn-sm btn-outline-primary">搜索</button></div>
+      <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('products') }}">重置</a></div>
+      <div class="col text-end">
+        <span class="text-muted small me-2">共 {{ rows|length }} 个 SKU</span>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增商品</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr>
+        <th>编码</th><th>商品名称</th><th>分类</th><th>仓库</th>
+        <th class="text-end">成本价</th><th class="text-end">售价</th><th class="text-end">毛利率</th>
+        <th class="text-end">账面</th><th class="text-end">可用</th><th class="text-end">冻结</th>
+        <th class="text-end">安全线</th><th>状态</th><th class="text-end">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="text-muted small">{{ r.code }}</td>
+          <td><a href="{{ url_for('stock_ledger', product_id=r.id) }}">{{ r.name }}</a></td>
+          <td><span class="badge text-bg-light text-dark">{{ r.category }}</span></td>
+          <td class="small">{{ r.warehouse_name or '-' }}</td>
+          <td class="text-end">¥{{ '%.2f'|format(r.price/100) }}</td>
+          <td class="text-end">¥{{ '%.2f'|format(r.sale_price/100) }}</td>
+          <td class="text-end small {{ 'text-success' if r.sale_price > r.price else 'text-danger' }}">
+            {{ '%.1f'|format((r.sale_price - r.price) / r.sale_price * 100) if r.sale_price else '-' }}%</td>
+          <td class="text-end fw-semibold">{{ r.stock }}</td>
+          <td class="text-end">
+            {% if r.available_stock <= 0 %}<span class="badge text-bg-danger">{{ r.available_stock }}</span>
+            {% elif r.available_stock <= r.safety_stock %}<span class="badge text-bg-warning">{{ r.available_stock }}</span>
+            {% else %}<span class="badge text-bg-success">{{ r.available_stock }}</span>{% endif %}
+          </td>
+          <td class="text-end text-muted">{{ r.frozen_stock }}</td>
+          <td class="text-end text-muted">{{ r.safety_stock }}</td>
+          <td>{% if r.status == 'on' %}<span class="badge text-bg-primary">在售</span>
+              {% else %}<span class="badge text-bg-secondary">停售</span>{% endif %}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('stock_ledger', product_id=r.id) }}">流水</a>
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+            <form class="d-inline" method="post" action="{{ url_for('product_delete', pid=r.id) }}" onsubmit="return confirm('确认删除 {{ r.name }}?')">
+              <button class="btn btn-sm btn-outline-danger">删除</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <form method="post" action="{{ url_for('product_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增商品</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-md-4"><label class="form-label small">商品编码 *</label><input class="form-control" name="code" required placeholder="如 P1001"></div>
+      <div class="col-md-8"><label class="form-label small">商品名称 *</label><input class="form-control" name="name" required></div>
+      <div class="col-md-3"><label class="form-label small">分类</label><input class="form-control" name="category" list="catList">
+        <datalist id="catList">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+      <div class="col-md-3"><label class="form-label small">单位</label><input class="form-control" name="unit" value="件"></div>
+      <div class="col-md-3"><label class="form-label small">成本价（元）</label><input class="form-control" name="price" type="number" step="0.01" value="0"></div>
+      <div class="col-md-3"><label class="form-label small">销售价（元）</label><input class="form-control" name="sale_price" type="number" step="0.01" value="0"></div>
+      <div class="col-md-3"><label class="form-label small">期初库存</label><input class="form-control" name="stock" type="number" value="0"></div>
+      <div class="col-md-3"><label class="form-label small">安全库存</label><input class="form-control" name="safety_stock" type="number" value="10"></div>
+      <div class="col-md-6"><label class="form-label small">所属仓库</label>
+        <select class="form-select" name="warehouse_id">
+          {% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">创建</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <form method="post" action="{{ url_for('product_edit', pid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑 {{ r.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-md-6"><label class="form-label small">商品名称</label><input class="form-control" name="name" value="{{ r.name }}"></div>
+      <div class="col-md-3"><label class="form-label small">分类</label><input class="form-control" name="category" value="{{ r.category }}"></div>
+      <div class="col-md-3"><label class="form-label small">单位</label><input class="form-control" name="unit" value="{{ r.unit }}"></div>
+      <div class="col-md-3"><label class="form-label small">成本价（元）</label><input class="form-control" name="price" type="number" step="0.01" value="{{ '%.2f'|format(r.price/100) }}"></div>
+      <div class="col-md-3"><label class="form-label small">销售价（元）</label><input class="form-control" name="sale_price" type="number" step="0.01" value="{{ '%.2f'|format(r.sale_price/100) }}"></div>
+      <div class="col-md-3"><label class="form-label small">安全库存</label><input class="form-control" name="safety_stock" type="number" value="{{ r.safety_stock }}"></div>
+      <div class="col-md-3"><label class="form-label small">所属仓库</label>
+        <select class="form-select" name="warehouse_id">
+          {% for w in warehouses %}<option value="{{ w.id }}" {{ 'selected' if w.id==r.warehouse_id }}>{{ w.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-md-4"><label class="form-label small">状态</label>
+        <select class="form-select" name="status">
+          <option value="on" {{ 'selected' if r.status=='on' }}>在售</option>
+          <option value="off" {{ 'selected' if r.status=='off' }}>停售</option>
+        </select></div>
+      <div class="col-12"><div class="alert alert-light border mb-0 small">
+        账面 {{ r.stock }} / 可用 {{ r.available_stock }} / 冻结 {{ r.frozen_stock }} —— 库存数量只能通过采购入库、销售出库、盘点调整变更，保证流水可追溯。
+      </div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

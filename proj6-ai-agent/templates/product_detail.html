@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}{{ p.title }} - {{ APP_NAME }}{% endblock %}
+{% block page_title %}商品详情{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header">原始信息（语料）</div><div class="card-body">
+      <h5>{{ p.title }}</h5>
+      <div class="text-muted small mb-2">品牌：{{ p.brand or '-' }} · 主题：{{ p.leaf_category or p.main_category or '-' }}</div>
+      <div class="fs-4 text-danger fw-bold mb-2">¥{{ '%.2f'|format((p.price_fen or 0)/100) }}</div>
+      <table class="table table-sm mb-2">
+        <tr><td class="text-muted">ASIN</td><td class="small">{{ p.asin }}</td></tr>
+        <tr><td class="text-muted">评分</td><td>{{ '%.1f'|format(p.rating or 0) }}★（{{ p.rating_count or 0 }} 人评）</td></tr>
+        <tr><td class="text-muted">类目</td><td class="small">{{ p.main_category or '-' }}</td></tr>
+        <tr><td class="text-muted">全链路类目</td><td class="small">{{ p.categories or '-' }}</td></tr>
+        <tr><td class="text-muted">入库时间</td><td class="small">{{ p.created_at[:16] }}</td></tr>
+      </table>
+      <p class="small text-muted mb-0">{{ p.description or '（无描述）' }}</p>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header">AI 富化结果（最新在前）</div><div class="card-body">
+      {% for e in en %}
+      <div class="border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between small mb-2">
+          <span>{% if e.mode=='llm' %}<span class="badge text-bg-success">LLM</span>{% else %}<span class="badge text-bg-secondary">规则兜底</span>{% endif %}
+          <span class="text-muted ms-2">{{ e.created_at[:16] }} · {{ e.model }}</span></span>
+          <span class="text-muted">{{ e.prompt_tokens+e.completion_tokens }} tok · {{ e.cost_fen }}分</span>
+        </div>
+        <div class="small mb-1"><b>卖点：</b>{{ e.summary }}</div>
+        <div class="small mb-1"><b>标签：</b>
+          {% for t in e.tags.split() %}<span class="badge text-bg-light text-dark me-1">{{ t }}</span>{% endfor %}</div>
+        <div class="small mb-1"><b>人群：</b>{{ e.audience }} · <b>场景：</b>{{ e.scenes }}</div>
+        <button class="btn btn-sm btn-outline-secondary mt-2" data-bs-toggle="collapse" data-bs-target="#editEn{{ e.id }}">人工修正</button>
+        <div class="collapse mt-2" id="editEn{{ e.id }}">
+          <form method="post" action="{{ url_for('enrich_edit', enid=e.id) }}">
+            <input class="form-control form-control-sm mb-1" name="summary" value="{{ e.summary }}">
+            <input class="form-control form-control-sm mb-1" name="tags" value="{{ e.tags }}">
+            <div class="row g-1">
+              <div class="col-6"><input class="form-control form-control-sm" name="audience" value="{{ e.audience }}"></div>
+              <div class="col-6"><input class="form-control form-control-sm" name="scenes" value="{{ e.scenes }}"></div>
+            </div>
+            <button class="btn btn-sm btn-primary mt-2">保存修正</button>
+          </form>
+        </div>
+      </div>
+      {% else %}<div class="text-muted small">尚未富化 → <a href="{{ url_for('enrich') }}">智能富化</a></div>{% endfor %}
+      <form method="post" action="{{ url_for('enrich_run') }}" class="mt-2">
+        <input type="hidden" name="n" value="1"><button class="btn btn-sm btn-outline-primary" onclick="return confirm('立即富化该商品?')">立即富化本商品</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

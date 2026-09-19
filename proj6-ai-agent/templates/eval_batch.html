@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{{ b.name }} 明细 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}评测明细{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex align-items-center gap-3">
+    <h5 class="mb-0">{{ b.name }}</h5>
+    {% if b.status=='running' %}<span class="badge text-bg-warning">运行中… <span id="pct">0</span>%</span>
+    {% elif b.status=='done' %}<span class="badge text-bg-success">完成</span>
+    {% else %}<span class="badge text-bg-danger">失败</span>{% endif %}
+    <span class="text-muted small">模型A: {{ b.model_a }} · 模型B: {{ b.model_b }}</span>
+    <a class="btn btn-sm btn-outline-primary ms-auto" href="{{ url_for('eval_report', bid=b.id) }}">查看报告</a>
+  </div>
+  <div class="progress mt-2 d-none" id="bar" style="height:8px"><div class="progress-bar" id="barinner" style="width:0%"></div></div>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
+    <thead><tr><th>用例</th><th>模型</th><th>Hit@K</th><th>引用</th><th>拒答</th>
+      <th class="text-end">延迟(ms)</th><th class="text-end">tokens</th><th>模式</th><th>回答摘要</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      {% set c = cases.get(r.case_id) %}
+      <tr>
+        <td class="small" style="max-width:220px"><span class="badge {{ 'text-bg-success' if c and c.kind=='in_domain' else 'text-bg-warning' }} me-1">{{ c.id if c else '?' }}</span>{{ c.question[:40] if c else '-' }}</td>
+        <td class="small">{{ r.model }}</td>
+        <td>{% if r.hit %}<span class="text-success fw-bold">✓</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if r.citation_ok %}<span class="text-success fw-bold">✓</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td>{% if r.refused %}<span class="badge text-bg-warning">拒答</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        <td class="text-end">{{ r.latency_ms }}</td>
+        <td class="text-end">{{ r.prompt_tokens + r.completion_tokens }}</td>
+        <td>{% if r.mode=='llm' %}<span class="badge text-bg-success">llm</span>{% else %}<span class="badge text-bg-secondary">offline</span>{% endif %}</td>
+        <td class="small text-muted" style="max-width:260px">{{ (r.answer or '')[:80] }}</td>
+      </tr>
+    {% else %}<tr><td colspan="9" class="text-center text-muted py-4">评测进行中或未开始</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const bid = {{ b.id }}, status = {{ b.status|tojson }};
+  if (status === 'running') {
+    const bar = document.getElementById('bar'), inner = document.getElementById('barinner'), pct = document.getElementById('pct');
+    bar.classList.remove('d-none');
+    const t = setInterval(async function () {
+      try {
+        const r = await fetch('/eval/batch/' + bid + '/status');
+        const d = await r.json();
+        pct.textContent = d.pct;
+        inner.style.width = d.pct + '%';
+        if (d.status !== 'running') { clearInterval(t); location.reload(); }
+      } catch (e) {}
+    }, 3000);
+  }
+</script>
+{% endblock %}

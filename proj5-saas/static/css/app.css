@@ -1,0 +1,24 @@
+:root { --sb-bg: #1f2937; --sb-fg: #cbd5e1; --sb-active: #3b82f6; }
+body { background: #f1f5f9; }
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar { width: 230px; background: var(--sb-bg); color: var(--sb-fg); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; }
+.brand { padding: 20px 20px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.brand-title { color: #fff; font-weight: 700; font-size: 16px; }
+.brand-sub { font-size: 12px; opacity: .6; margin-top: 2px; }
+.sidebar .nav { padding: 10px 8px; flex: 1; }
+.sidebar .nav-link { color: var(--sb-fg); border-radius: 8px; padding: 9px 12px; margin-bottom: 2px; font-size: 14px; }
+.sidebar .nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+.sidebar .nav-link.active { background: var(--sb-active); color: #fff; }
+.nav-icon { margin-right: 8px; }
+.sidebar-footer { padding: 12px 20px; font-size: 11px; opacity: .45; border-top: 1px solid rgba(255,255,255,.08); }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+.topbar-title { font-weight: 600; font-size: 16px; }
+.content { padding: 24px; flex: 1; }
+.card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.stat-card { background: linear-gradient(135deg,#fff 0%, #f8fafc 100%); }
+.stat-label { color: #64748b; font-size: 13px; }
+.stat-value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+.table thead th { background: #f8fafc; font-size: 13px; color: #475569; }
+.table td { font-size: 14px; }
+.badge { font-weight: 500; }

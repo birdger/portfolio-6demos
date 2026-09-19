@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ b.title }} - {{ APP_NAME }}{% endblock %}
+{% block page_title %}图书详情{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <h4>{{ b.title }}</h4>
+      <div class="text-muted mb-2">作者：{{ b.author or '-' }} · 分类：{{ b.category or '-' }}</div>
+      <table class="table table-sm mb-3">
+        <tr><td class="text-muted" style="width:40%">库存</td><td><span class="fw-semibold">{{ b.stock }}</span></td></tr>
+        <tr><td class="text-muted">状态</td><td>
+          {% if b.status=='available' %}<span class="badge text-bg-success">在架</span>
+          {% elif b.status=='borrowed' %}<span class="badge text-bg-primary">借出</span>
+          {% else %}<span class="badge text-bg-secondary">{{ b.status }}</span>{% endif %}</td></tr>
+        <tr><td class="text-muted">创建时间</td><td class="small">{{ b.created_at[:16] }}</td></tr>
+      </table>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('books') }}">← 返回图书列表</a>
+    </div>
+    <div class="col-lg-8">
+      <h6 class="text-muted mb-2">借阅历史</h6>
+      <table class="table table-sm align-middle">
+        <thead><tr><th>借阅人</th><th>借出日期</th><th>归还日期</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for r in hist %}
+          <tr>
+            <td>{{ r.reader_name }}</td>
+            <td class="small">{{ r.borrow_date[:10] }}</td>
+            <td class="small">{{ r.return_date[:10] if r.return_date else '-' }}</td>
+            <td><span class="badge {{ 'text-bg-primary' if r.status=='borrowed' else ('text-bg-success' if r.status=='returned' else 'text-bg-danger') }}">
+              {{ BORROW_STATUS_LABELS.get(r.status, r.status) }}</span></td>
+          </tr>
+        {% else %}<tr><td colspan="4" class="text-center text-muted py-3">暂无借阅历史</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

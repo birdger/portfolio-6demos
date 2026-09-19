@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}订单详情 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}订单详情{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header">订单 {{ o.order_no }}
+      {% set s = ORDER_STATUS.get(o.status, (o.status, 'text-bg-secondary')) %}
+      <span class="badge {{ s[1] }} ms-2">{{ s[0] }}</span></div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>商品</th><th>规格</th><th class="text-end">单价(元)</th><th class="text-end">数量</th><th class="text-end">小计(元)</th></tr></thead>
+        <tbody>
+        {% for it in items %}
+          <tr>
+            <td>{{ it.title }}</td>
+            <td class="small text-muted">{{ it.spec or '-' }}</td>
+            <td class="text-end">¥{{ '%.2f'|format(it.price/100) }}</td>
+            <td class="text-end">{{ it.qty }}</td>
+            <td class="text-end">¥{{ '%.2f'|format(it.price*it.qty/100) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot><tr><td colspan="4" class="text-end text-muted">商品合计</td><td class="text-end">¥{{ '%.2f'|format(o.total_amount/100) }}</td></tr>
+        <tr><td colspan="4" class="text-end text-muted">优惠</td><td class="text-end text-danger">-¥{{ '%.2f'|format(o.discount_amount/100) }}</td></tr>
+        <tr><td colspan="4" class="text-end fw-semibold">实付</td><td class="text-end fw-bold text-danger">¥{{ '%.2f'|format(o.pay_amount/100) }}</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="card-body border-top small text-muted">
+      {{ o.receiver or '未填' }} · {{ o.address or '未填' }}<br>
+      支付单: {{ o.pay_no or '-' }}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header">状态时间线</div><div class="card-body">
+      <div class="timeline small">
+        <div><span class="badge text-bg-secondary me-2">下单</span>{{ o.created_at[:19] }}</div>
+        {% if o.paid_at %}<div><span class="badge text-bg-primary me-2">支付</span>{{ o.paid_at[:19] }}（沙箱模拟, pay_no 幂等）</div>{% endif %}
+        {% if o.shipped_at %}<div><span class="badge text-bg-info me-2">发货</span>{{ o.shipped_at[:19] }}</div>{% endif %}
+        {% if o.finished_at %}<div><span class="badge text-bg-success me-2">完成</span>{{ o.finished_at[:19] }}</div>{% endif %}
+        {% if o.canceled_at %}<div><span class="badge text-bg-secondary me-2">取消</span>{{ o.canceled_at[:19] }}（库存已回滚）</div>{% endif %}
+      </div>
+    </div></div>
+    <div class="card mt-3"><div class="card-body">
+      {% if o.status == 'pending' %}
+      <form class="d-inline" method="post" action="{{ url_for('order_pay', oid=o.id) }}">
+        <button class="btn btn-primary w-100 mb-2">立即支付 ¥{{ '%.2f'|format(o.pay_amount/100) }}</button>
+      </form>
+      <form method="post" action="{{ url_for('order_cancel', oid=o.id) }}" onsubmit="return confirm('取消订单? 库存将回滚')">
+        <button class="btn btn-outline-secondary w-100">取消订单</button>
+      </form>
+      {% elif o.status == 'paid' and current_user.role in ('admin','operator') %}
+      <form method="post" action="{{ url_for('order_ship', oid=o.id) }}">
+        <button class="btn btn-primary w-100">确认发货</button>
+      </form>
+      {% elif o.status == 'shipped' %}
+      <form method="post" action="{{ url_for('order_finish', oid=o.id) }}">
+        <button class="btn btn-success w-100">确认收货</button>
+      </form>
+      {% endif %}
+      {% if o.status in ('paid','shipped') %}
+      <form class="mt-2" method="post" action="{{ url_for('order_refund', oid=o.id) }}" onsubmit="return confirm('提交退款申请?')">
+        <input class="form-control form-control-sm mb-2" name="reason" placeholder="退款原因（可选）">
+        <button class="btn btn-outline-danger w-100">申请退款</button>
+      </form>
+      {% endif %}
+      {% if o.status == 'finished' %}
+      {% for it in items %}
+      <form class="mt-2" method="post" action="{{ url_for('comment') }}">
+        <input type="hidden" name="order_id" value="{{ o.id }}">
+        <input type="hidden" name="product_id" value="{{ it.product_id }}">
+        <div class="input-group input-group-sm">
+          <select class="form-select form-select-sm" name="rating" style="max-width:110px">
+            {% for i in range(5,0,-1) %}<option value="{{ i }}">{{ i }}★</option>{% endfor %}
+          </select>
+          <input class="form-control form-control-sm" name="content" placeholder="评价「{{ it.title }}」">
+          <button class="btn btn-outline-primary btn-sm">评价</button>
+        </div>
+      </form>
+      {% endfor %}
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

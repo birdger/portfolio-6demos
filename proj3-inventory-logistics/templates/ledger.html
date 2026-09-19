@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}库存流水 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}库存流水{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="pid">
+        <option value="">全部商品</option>
+        {% for p in products %}<option value="{{ p.id }}" {{ 'selected' if pid==p.id|string }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="ltype">
+        <option value="">全部类型</option>
+        {% for k, (label, _) in LEDGER_TYPE.items() %}
+        <option value="{{ k }}" {{ 'selected' if ltype==k }}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">筛选</button></div>
+    <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('stock_ledger') }}">重置</a></div>
+    <div class="col text-end"><span class="text-muted small">共 {{ total }} 条流水</span></div>
+  </form>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>时间</th><th>商品</th><th>类型</th><th class="text-end">变动</th>
+      <th class="text-end">账面 前→后</th><th>单据号</th><th>备注</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="small text-muted">{{ r.created_at }}</td>
+        <td>{{ r.product_name or ('#' ~ r.product_id) }}</td>
+        <td>{% set lt = LEDGER_TYPE.get(r.type, (r.type, 'text-bg-secondary')) %}
+          <span class="badge {{ lt[1] }}">{{ lt[0] }}</span></td>
+        <td class="text-end fw-semibold {{ 'text-success' if r.change_qty>0 else 'text-danger' }}">
+          {{ '+' if r.change_qty>0 }}{{ r.change_qty }}</td>
+        <td class="text-end small">{{ r.before_qty }} → {{ r.after_qty }}</td>
+        <td class="small text-muted">{{ r.ref_no or '-' }}</td>
+        <td class="small">{{ r.remark or '' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="text-center text-muted py-4">暂无流水</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

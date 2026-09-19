@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}分类管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}分类管理{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="post">
+    <div class="col-auto"><input class="form-control form-control-sm" name="name" placeholder="分类名称" required></div>
+    <div class="col-auto"><input class="form-control form-control-sm" name="sort" type="number" value="0" style="width:90px"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary">+ 添加分类</button></div>
+  </form>
+</div></div>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>ID</th><th>名称</th><th class="text-end">排序</th><th class="text-end">商品数</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="text-muted">{{ r.id }}</td>
+        <td class="fw-semibold">{{ r.name }}</td>
+        <td class="text-end">{{ r.sort }}</td>
+        <td class="text-end">{{ r.product_cnt or 0 }}</td>
+        <td class="text-end">
+          <form class="d-inline" method="post" action="{{ url_for('category_delete', cid=r.id) }}" onsubmit="return confirm('删除分类 {{ r.name }}? 其下商品会变成未分类')">
+            <button class="btn btn-sm btn-outline-danger">删除</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-center text-muted py-4">暂无分类</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

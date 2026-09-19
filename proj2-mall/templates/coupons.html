@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}营销中心 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}营销中心{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-6"><div class="card h-100"><div class="card-header">可领优惠券{% if current_user.role in ('admin','operator') %}<span class="text-muted small ms-2">（下方可管理/发券）</span>{% endif %}</div><div class="card-body">
+    <div class="row g-3">
+      {% for c in rows %}
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100 {{ 'text-bg-primary' if not c.claimed_cnt or c.id not in claimed }}">
+          <div class="fw-semibold">{{ c.title }}</div>
+          <div class="small opacity-75">{% if c.type=='full_reduce' %}满 {{ '%.0f'|format(c.threshold/100) }} 减 {{ '%.0f'|format(c.value/100) }}{% else %}{{ c.value }} 折{% endif %}</div>
+          <div class="small opacity-75 mb-2">剩 {{ c.stock }} 张</div>
+          {% if c.id in claimed %}
+          <span class="badge text-bg-light text-dark">已领取</span>
+          {% else %}
+          <form class="d-inline" method="post" action="{{ url_for('coupon_claim') }}">
+            <input type="hidden" name="coupon_id" value="{{ c.id }}">
+            <button class="btn btn-sm btn-light">立即领取</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}<div class="col-12 text-muted small">暂无可用优惠券</div>{% endfor %}
+    </div>
+  </div></div></div>
+  <div class="col-md-6">
+    {% if current_user.role in ('admin','operator') %}
+    <div class="card mb-3"><div class="card-header">创建优惠券</div><div class="card-body">
+      <form method="post" action="{{ url_for('coupon_add') }}" class="row g-2">
+        <div class="col-12"><input class="form-control form-control-sm" name="title" placeholder="券名称" required></div>
+        <div class="col-4"><select class="form-select form-select-sm" name="type">
+          <option value="full_reduce">满减券</option><option value="discount">折扣券</option></select></div>
+        <div class="col-4"><input class="form-control form-control-sm" name="threshold" type="number" step="0.01" placeholder="门槛(元,0=无)" value="0"></div>
+        <div class="col-4"><input class="form-control form-control-sm" name="value" type="number" step="0.01" placeholder="面额(元)或折扣值88" required></div>
+        <div class="col-4"><input class="form-control form-control-sm" name="stock" type="number" placeholder="库存" value="100"></div>
+        <div class="col-8"><button class="btn btn-sm btn-primary">创建</button></div>
+      </form>
+    </div></div>
+    <div class="card"><div class="card-header">券管理（发放统计）</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>券</th><th>类型</th><th>门槛/面额</th><th class="text-end">剩余</th><th class="text-end">已领</th></tr></thead>
+        <tbody>
+        {% for c in mgmt %}<tr><td>{{ c.title }}</td><td class="small">{{ '满减' if c.type=='full_reduce' else '折扣' }}</td>
+          <td class="small">满{{ '%.0f'|format(c.threshold/100) }}{{ '减' if c.type=='full_reduce' else '折' }}{{ '%.0f'|format(c.value/100) if c.type=='full_reduce' else c.value }}</td>
+          <td class="text-end">{{ c.stock }}/{{ c.total }}</td><td class="text-end">{{ c.claimed_cnt }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-center text-muted">暂无</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

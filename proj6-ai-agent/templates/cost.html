@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}成本看板 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}成本看板{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">总调用</div><div class="fs-4 fw-bold">{{ stats.chat_cnt + stats.run_cnt + stats.enrich_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-info"><div class="card-body py-2"><div class="small opacity-75">总 tokens</div><div class="fs-4 fw-bold">{{ stats.chat_tok + stats.run_tok + stats.enrich_tok }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-warning"><div class="card-body py-2"><div class="small opacity-75">总成本(分)</div><div class="fs-4 fw-bold">{{ stats.chat_cost + stats.run_cost + stats.enrich_cost }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">离线兜底对话</div><div class="fs-4 fw-bold">{{ stats.offline_chat }}</div></div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header">按功能拆分</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>功能</th><th class="text-end">调用数</th><th class="text-end">tokens</th><th class="text-end">成本(分)</th></tr></thead>
+        <tbody>
+          <tr><td>对话助手</td><td class="text-end">{{ stats.chat_cnt }}</td><td class="text-end">{{ stats.chat_tok }}</td><td class="text-end">{{ stats.chat_cost }}</td></tr>
+          <tr><td>评测运行</td><td class="text-end">{{ stats.run_cnt }}</td><td class="text-end">{{ stats.run_tok }}</td><td class="text-end">{{ stats.run_cost }}</td></tr>
+          <tr><td>商品富化</td><td class="text-end">{{ stats.enrich_cnt }}</td><td class="text-end">{{ stats.enrich_tok }}</td><td class="text-end">{{ stats.enrich_cost }}</td></tr>
+          <tr class="table-light"><td class="fw-semibold">合计</td><td class="text-end fw-semibold">{{ stats.chat_cnt + stats.run_cnt + stats.enrich_cnt }}</td>
+            <td class="text-end fw-semibold">{{ stats.chat_tok + stats.run_tok + stats.enrich_tok }}</td>
+            <td class="text-end fw-semibold">{{ stats.chat_cost + stats.run_cost + stats.enrich_cost }}</td></tr>
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header">按模型（对话）</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>模型</th><th class="text-end">调用数</th><th class="text-end">tokens</th><th class="text-end">成本(分)</th></tr></thead>
+        <tbody>
+        {% for r in by_model %}
+          <tr><td class="small">{{ r.model }}</td><td class="text-end">{{ r.cnt }}</td><td class="text-end">{{ r.tok }}</td><td class="text-end">{{ r.cost }}</td></tr>
+        {% else %}<tr><td colspan="4" class="text-center text-muted py-3">暂无数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+
+<div class="card mt-3"><div class="card-header">近 14 日对话调用与成本</div><div class="card-body">
+  <div id="dailyChart" style="height:260px"></div>
+</div></div>
+
+<div class="card mt-3"><div class="card-header">计费单价（分/千 token，可在系统设置调整）</div><div class="card-body small">
+  输入 {{ unit.price_in_fen_per_1k }} 分/1k · 输出 {{ unit.price_out_fen_per_1k }} 分/1k
+  · 成本 = 输入tok/1k×单价 + 输出tok/1k×单价
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const daily = {{ daily|tojson }};
+  echarts.init(document.getElementById('dailyChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    legend: {bottom: 0},
+    grid: {left: 44, right: 40, top: 18, bottom: 36},
+    xAxis: {type: 'category', data: daily.map(x => x.d.slice(5))},
+    yAxis: [{type: 'value', minInterval: 1}, {type: 'value'}],
+    series: [
+      {name: '调用数', type: 'bar', data: daily.map(x => x.cnt), itemStyle: {color: '#6366f1'}},
+      {name: '成本(分)', type: 'line', smooth: true, yAxisIndex: 1, data: daily.map(x => x.cost), itemStyle: {color: '#f59e0b'}}
+    ]
+  });
+</script>
+{% endblock %}

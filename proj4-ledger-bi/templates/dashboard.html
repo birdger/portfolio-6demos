@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}数据看板 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}数据看板
+  {% if scope == 'all' %}<span class="badge text-bg-info align-middle fs-6">全局汇总</span>
+  {% else %}<span class="badge text-bg-light text-dark align-middle fs-6">仅本人</span>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">本月收入(元)</div><div class="fs-4 fw-bold">{{ '%.2f'|format(kpi.m_income/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-danger"><div class="card-body py-2"><div class="small opacity-75">本月支出(元)</div><div class="fs-4 fw-bold">{{ '%.2f'|format(kpi.m_expense/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">本月结余(元)</div><div class="fs-4 fw-bold {{ 'text-success' if kpi.m_income>=kpi.m_expense else 'text-danger' }}">{{ '%.2f'|format((kpi.m_income-kpi.m_expense)/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">支出环比上月</div><div class="fs-4 fw-bold {{ 'text-danger' if kpi.m_expense>kpi.l_expense else 'text-success' }}">{{ '%.1f'|format((kpi.m_expense-kpi.l_expense)/kpi.l_expense*100) if kpi.l_expense else '—' }}%</div></div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card h-100"><div class="card-header">近 12 个月收支趋势</div><div class="card-body">
+      <div id="trendChart" style="height:300px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-header">本月支出分类占比</div><div class="card-body">
+      <div id="shareChart" style="height:300px"></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">账户余额</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>账户</th><th>类型</th><th class="text-end">余额(元)</th></tr></thead>
+        <tbody>
+        {% for a in accounts %}<tr><td>{{ a.name }}</td><td class="small text-muted">{{ a.type }}</td><td class="text-end">{{ '%.2f'|format(a.balance/100) }}</td></tr>
+        {% else %}<tr><td colspan="3" class="text-center text-muted py-3">暂无账户</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">月度预算执行</div><div class="card-body">
+      {% if cur_budget %}
+      <div class="d-flex justify-content-between small mb-1">
+        <span class="text-muted">{{ cur_budget.month }} 预算</span>
+        <span>已用 ¥{{ '%.2f'|format(cur_budget.spent/100) }} / ¥{{ '%.2f'|format(cur_budget.budget/100) }}</span>
+      </div>
+      <div class="progress mb-2" style="height:14px">
+        <div class="progress-bar {{ 'bg-danger' if cur_budget.spent>cur_budget.budget else 'bg-success' }}"
+             style="width: {{ [cur_budget.spent*100/cur_budget.budget, 100]|min if cur_budget.budget else 0 }}%"></div>
+      </div>
+      <div class="small text-muted">剩余 ¥{{ '%.2f'|format(cur_budget.left/100) }}
+        {% if cur_budget.spent > cur_budget.budget %}<span class="text-danger fw-semibold">已超支</span>{% endif %}</div>
+      {% else %}<div class="text-muted small">本月未设置预算 → <a href="{{ url_for('budgets') }}">去设置</a></div>{% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const trend = {{ trend|tojson }};
+  echarts.init(document.getElementById('trendChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    legend: {bottom: 0},
+    grid: {left: 52, right: 16, top: 24, bottom: 40},
+    xAxis: {type: 'category', data: trend.map(x => x.month)},
+    yAxis: {type: 'value'},
+    series: [
+      {name: '收入', type: 'bar', data: trend.map(x => x.income), itemStyle: {color: '#10b981'}},
+      {name: '支出', type: 'bar', data: trend.map(x => x.expense), itemStyle: {color: '#ef4444'}},
+      {name: '结余', type: 'line', smooth: true, data: trend.map(x => x.balance), itemStyle: {color: '#6366f1'}}
+    ]
+  });
+  const share = {{ share|tojson }};
+  echarts.init(document.getElementById('shareChart')).setOption({
+    tooltip: {trigger: 'item', formatter: '{b}: {c} 元 ({d}%)'},
+    legend: {bottom: 0, type: 'scroll'},
+    series: [{type: 'pie', radius: ['40%', '66%'],
+              data: share.map(x => ({name: x.top_name, value: (x.amt/100).toFixed(2)})),
+              label: {formatter: '{b}\n{d}%'}}]
+  });
+</script>
+{% endblock %}

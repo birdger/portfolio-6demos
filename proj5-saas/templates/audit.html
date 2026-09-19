@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}审计日志 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}审计日志{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto"><input class="form-control form-control-sm" name="kw" value="{{ kw }}" placeholder="关键词（用户名/详情）"></div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="action">
+        <option value="">全部动作</option>
+        {% for a in actions %}<option value="{{ a }}" {{ 'selected' if request.args.get('action')==a }}>{{ a }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="limit">
+        <option value="100">100 条/页</option>
+        <option value="500" {{ 'selected' if limit==500 }}>500 条/页</option>
+        <option value="1000" {{ 'selected' if limit==1000 }}>1000 条/页</option>
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">筛选</button></div>
+    <div class="col text-end"><span class="text-muted small">共 {{ total }} 条审计记录</span></div>
+  </form>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>详情</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="small text-muted">{{ r.created_at }}</td>
+        <td>{{ r.username or '系统' }}</td>
+        <td><span class="badge text-bg-secondary">{{ r.action }}</span></td>
+        <td class="small">{{ r.detail or '' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="4" class="text-center text-muted py-4">暂无审计记录</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

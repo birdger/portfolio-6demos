@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}仪表盘 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}仪表盘 · 供应链全景{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for label, value in stats.items() %}
+  <div class="col-xl-3 col-md-4 col-sm-6">
+    <div class="card stat-card h-100">
+      <div class="card-body py-3">
+        <div class="stat-label">{{ label }}</div>
+        <div class="stat-value">{{ value }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span>📈 近 6 月销售趋势（元）</span>
+        <span class="text-muted small">三流合一 · 资金流视角</span>
+      </div>
+      <div class="card-body"><div id="trendChart" style="height:280px"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span>🏬 库存 Top 10（件）</span>
+        <a class="small" href="{{ url_for('stock') }}">查看台账 →</a>
+      </div>
+      <div class="card-body"><div id="stockChart" style="height:280px"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span>⚠️ 缺货预警（可用库存 ≤ 安全库存）</span>
+        <a class="small" href="{{ url_for('stock') }}">补货 →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>商品</th><th class="text-end">可用</th><th class="text-end">安全线</th><th class="text-end">缺口</th></tr></thead>
+          <tbody>
+          {% for r in warn_list %}
+            <tr>
+              <td><span class="text-muted small">{{ r.code }}</span> {{ r.name }}</td>
+              <td class="text-end">
+                {% if r.available_stock <= 0 %}<span class="badge text-bg-danger">{{ r.available_stock }}</span>
+                {% else %}<span class="badge text-bg-warning">{{ r.available_stock }}</span>{% endif %}
+              </td>
+              <td class="text-end text-muted">{{ r.safety_stock }}</td>
+              <td class="text-end text-danger fw-semibold">{{ r.available_stock - r.safety_stock }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">全部商品库存充足 🎉</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span>🚚 最新运单</span>
+        <a class="small" href="{{ url_for('waybills') }}">全部运单 →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>运单号</th><th>客户</th><th>状态</th><th class="text-end">操作</th></tr></thead>
+          <tbody>
+          {% for w in recent_wb %}
+            <tr>
+              <td class="small">{{ w.no }}<div class="text-muted" style="font-size:11px">{{ w.carrier }}</div></td>
+              <td>{{ w.customer_name or '-' }}</td>
+              <td><span class="badge {{ WB_STATUS.get(w.status, ('','text-bg-secondary'))[1] }}">{{ WB_STATUS.get(w.status, (w.status,''))[0] }}</span></td>
+              <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('waybill_detail', wb_id=w.id) }}">轨迹</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">暂无运单</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span>🔍 最新库存流水（信息流留痕）</span>
+        <a class="small" href="{{ url_for('stock_ledger') }}">全部流水 →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>时间</th><th>商品</th><th>类型</th><th class="text-end">变动</th><th class="text-end">变动前</th><th class="text-end">变动后</th><th>关联单据</th><th>备注</th></tr></thead>
+          <tbody>
+          {% for l in recent_ledger %}
+            <tr>
+              <td class="text-muted small">{{ l.created_at }}</td>
+              <td>{{ l.product_name }}</td>
+              <td><span class="badge {{ LEDGER_TYPE.get(l.type, ('','text-bg-secondary'))[1] }}">{{ LEDGER_TYPE.get(l.type, (l.type,''))[0] }}</span></td>
+              <td class="text-end fw-semibold {{ 'text-success' if l.change_qty>0 else 'text-danger' if l.change_qty<0 else 'text-muted' }}">
+                {{ '+' if l.change_qty>0 }}{{ l.change_qty }}</td>
+              <td class="text-end text-muted">{{ l.before_qty }}</td>
+              <td class="text-end">{{ l.after_qty }}</td>
+              <td class="small">{{ l.ref_no or '-' }}</td>
+              <td class="small text-muted">{{ l.remark }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+var trendX = {{ trend_x|tojson }}, trendY = {{ trend_y|tojson }};
+var topX = {{ top_x|tojson }}, topY = {{ top_y|tojson }};
+
+var c1 = echarts.init(document.getElementById('trendChart'));
+c1.setOption({
+  tooltip: { trigger: 'axis' },
+  grid: { left: 50, right: 20, top: 30, bottom: 30 },
+  xAxis: { type: 'category', data: trendX, boundaryGap: false },
+  yAxis: { type: 'value', splitLine: { lineStyle: { color: '#eef2f7' } } },
+  series: [{
+    type: 'line', smooth: true, data: trendY, symbolSize: 7,
+    lineStyle: { width: 3, color: '#3b82f6' },
+    itemStyle: { color: '#3b82f6' },
+    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+      colorStops: [{ offset: 0, color: 'rgba(59,130,246,.35)' }, { offset: 1, color: 'rgba(59,130,246,.02)' }] } }
+  }]
+});
+
+var c2 = echarts.init(document.getElementById('stockChart'));
+c2.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: 110, right: 30, top: 20, bottom: 20 },
+  xAxis: { type: 'value', splitLine: { lineStyle: { color: '#eef2f7' } } },
+  yAxis: { type: 'category', data: topX.slice().reverse(), axisLabel: { fontSize: 11 } },
+  series: [{
+    type: 'bar', data: topY.slice().reverse(), barWidth: 14,
+    itemStyle: { borderRadius: [0, 6, 6, 0],
+      color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+        colorStops: [{ offset: 0, color: '#60a5fa' }, { offset: 1, color: '#1d4ed8' }] } }
+  }]
+});
+window.addEventListener('resize', function () { c1.resize(); c2.resize(); });
+</script>
+{% endblock %}

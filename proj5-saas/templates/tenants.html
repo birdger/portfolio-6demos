@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}租户管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}租户管理{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <span class="text-muted small">
+        每个租户 = 一套独立的图书借阅系统（数据行级隔离）。开通租户时自动创建租户管理员账号（tadminN/admin123）。
+        停用租户后，其用户登录会被立刻拦截（见<a href="{{ url_for('isolation') }}">隔离验证</a>）。
+      </span>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 开通租户</button></div>
+  </div>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>ID</th><th>租户</th><th>套餐</th><th>联系人</th><th>状态</th><th>到期日</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="text-muted">{{ r.id }}</td>
+        <td class="fw-semibold">{{ r.name }}
+          {% if r.is_new %}<span class="badge text-bg-warning ms-1">新</span>{% endif %}</td>
+        <td class="small">{{ r.plan_name or '未分配' }}</td>
+        <td class="small">{{ r.contact or '-' }}</td>
+        <td>{% if r.status=='active' %}<span class="badge text-bg-success">正常</span>{% else %}<span class="badge text-bg-danger">已停用</span>{% endif %}</td>
+        <td class="small text-muted">{{ r.expire_date or '-' }}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#acct{{ r.id }}">管理员</button>
+          <form class="d-inline" method="post" action="{{ url_for('tenant_toggle', tid=r.id) }}">
+            <button class="btn btn-sm {{ 'btn-outline-warning' if r.status=='active' else 'btn-outline-success' }}"
+              onclick="return confirm('{{ '停用' if r.status=='active' else '恢复' }}租户 {{ r.name }}? {{ '停用后其用户无法登录' if r.status=='active' else '' }}')">
+              {{ '停用' if r.status=='active' else '恢复' }}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tenant_add') }}">
+    <div class="modal-header"><h5 class="modal-title">开通租户</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">租户名称 *</label><input class="form-control" name="name" required></div>
+      <div class="col-6"><label class="form-label small">套餐</label>
+        <select class="form-select" name="plan_id">
+          {% for p in plans %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-6"><label class="form-label small">联系人</label><input class="form-control" name="contact"></div>
+      <div class="col-6"><label class="form-label small">电话</label><input class="form-control" name="phone"></div>
+      <div class="col-6"><label class="form-label small">到期日</label><input class="form-control" type="date" name="expire_date"></div>
+      <div class="col-12"><hr class="my-1">
+        <div class="text-muted small mb-2">自动创建租户管理员：</div></div>
+      <div class="col-4"><label class="form-label small">管理员账号 *</label><input class="form-control" name="admin_username" required placeholder="tadmin3"></div>
+      <div class="col-4"><label class="form-label small">管理员密码</label><input class="form-control" name="admin_password" value="admin123"></div>
+      <div class="col-4"><label class="form-label small">管理员姓名</label><input class="form-control" name="admin_name"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">开通</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tenant_edit', tid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑租户 {{ r.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">名称</label><input class="form-control" name="name" value="{{ r.name }}" required></div>
+      <div class="col-6"><label class="form-label small">套餐</label>
+        <select class="form-select" name="plan_id">
+          <option value="">不分配</option>
+          {% for p in plans %}<option value="{{ p.id }}" {{ 'selected' if r.plan_id==p.id }}>{{ p.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-6"><label class="form-label small">联系人</label><input class="form-control" name="contact" value="{{ r.contact or '' }}"></div>
+      <div class="col-6"><label class="form-label small">电话</label><input class="form-control" name="phone" value="{{ r.phone or '' }}"></div>
+      <div class="col-6"><label class="form-label small">到期日</label><input class="form-control" type="date" name="expire_date" value="{{ r.expire_date or '' }}"></div>
+      <div class="col-6"><label class="form-label small">状态</label>
+        <select class="form-select" name="status">
+          <option value="active" {{ 'selected' if r.status=='active' }}>正常</option>
+          <option value="disabled" {{ 'selected' if r.status=='disabled' }}>停用</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+<div class="modal fade" id="acct{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tenant_edit', tid=r.id) }}">
+    <input type="hidden" name="name" value="{{ r.name }}">
+    <div class="modal-header"><h5 class="modal-title">租户管理员账号</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <p class="small text-muted">管理员账号在该租户开通时创建，可在<a href="{{ url_for('tenant_users') }}">租户成员管理</a>（以租户身份登录后）中重置密码。</p>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">关闭</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

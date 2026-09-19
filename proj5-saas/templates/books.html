@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}图书管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}图书管理（{{ t.name }}）{% endblock %}
+{% block content %}
+{% if over.get('books') %}
+<div class="alert alert-danger py-2 small">⚠️ 图书数已达套餐配额上限（{{ usage.books }}/{{ q.books if q else '?' }}），不能继续新增。</div>
+{% endif %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto"><input class="form-control form-control-sm" name="kw" value="{{ kw }}" placeholder="书名 / 作者"></div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="cat">
+        <option value="">全部分类</option>
+        {% for c in cats %}<option value="{{ c }}" {{ 'selected' if cat==c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">搜索</button></div>
+    <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('books') }}">重置</a></div>
+    <div class="col text-end">
+      <span class="text-muted small me-2">{{ usage.books }}/{{ t.book_quota }} 本</span>
+      {% if not over.get('books') %}<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增图书</button>{% endif %}
+    </div>
+  </form>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>书名</th><th>作者</th><th>分类</th><th class="text-end">库存</th><th>状态</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="fw-semibold"><a href="{{ url_for('book_detail', bid=r.id) }}">{{ r.title }}</a></td>
+        <td>{{ r.author or '-' }}</td>
+        <td><span class="badge text-bg-light text-dark">{{ r.category or '-' }}</span></td>
+        <td class="text-end">{{ r.stock }}</td>
+        <td>{% if r.status=='available' %}<span class="badge text-bg-success">在架</span>
+            {% elif r.status=='borrowed' %}<span class="badge text-bg-primary">借出</span>
+            {% else %}<span class="badge text-bg-secondary">{{ r.status }}</span>{% endif %}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+          <form class="d-inline" method="post" action="{{ url_for('book_delete', bid=r.id) }}" onsubmit="return confirm('删除《{{ r.title }}》?')">
+            <button class="btn btn-sm btn-outline-danger">删除</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="text-center text-muted py-4">暂无图书</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('book_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增图书</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-8"><label class="form-label small">书名 *</label><input class="form-control" name="title" required></div>
+      <div class="col-4"><label class="form-label small">作者</label><input class="form-control" name="author"></div>
+      <div class="col-4"><label class="form-label small">分类</label><input class="form-control" name="category" list="catList">
+        <datalist id="catList">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+      <div class="col-4"><label class="form-label small">库存</label><input class="form-control" name="stock" type="number" value="1"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('book_edit', bid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑《{{ r.title }}》</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-8"><label class="form-label small">书名</label><input class="form-control" name="title" value="{{ r.title }}" required></div>
+      <div class="col-4"><label class="form-label small">作者</label><input class="form-control" name="author" value="{{ r.author or '' }}"></div>
+      <div class="col-4"><label class="form-label small">分类</label><input class="form-control" name="category" value="{{ r.category or '' }}" list="catList2">
+        <datalist id="catList2">{% for c in cats %}<option value="{{ c }}">{% endfor %}</datalist></div>
+      <div class="col-4"><label class="form-label small">库存</label><input class="form-control" name="stock" type="number" value="{{ r.stock }}"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

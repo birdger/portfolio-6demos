@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}系统设置 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}系统设置{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">模型与检索参数（保存后重建索引）</div><div class="card-body">
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label small">中转 Base URL</label>
+          <input class="form-control" name="base_url" value="{{ s.base_url or '' }}" placeholder="https://siyu.site/v1">
+          <div class="form-text">运行时读取 _shared/api.env 的 OPENAI_API_KEY 作鉴权。
+            {% if env_has_key %}<span class="text-success">✓ 已在本机环境文件中找到 API Key（不落地显示）</span>
+            {% else %}<span class="text-warning">✗ 未找到 Key → 将处于离线兜底模式</span>{% endif %}</div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6"><label class="form-label small">模型 A（对话/富化）</label>
+            <input class="form-control" name="model_a" value="{{ s.model_a }}"></div>
+          <div class="col-6"><label class="form-label small">模型 B（评测对比）</label>
+            <input class="form-control" name="model_b" value="{{ s.model_b }}"></div>
+          <div class="col-4"><label class="form-label small">Top-K 检索</label>
+            <input class="form-control" name="top_k" type="number" value="{{ s.top_k }}"></div>
+          <div class="col-4"><label class="form-label small">最低检索得分</label>
+            <input class="form-control" name="min_score" type="number" step="0.1" value="{{ s.min_score }}"></div>
+          <div class="col-4"><label class="form-label small">语料规模(索引)</label>
+            <input class="form-control" name="corpus_limit" type="number" value="{{ s.corpus_limit }}"></div>
+          <div class="col-6"><label class="form-label small">输入单价(分/1k tok)</label>
+            <input class="form-control" name="price_in" type="number" value="{{ s.price_in_fen_per_1k }}"></div>
+          <div class="col-6"><label class="form-label small">输出单价(分/1k tok)</label>
+            <input class="form-control" name="price_out" type="number" value="{{ s.price_out_fen_per_1k }}"></div>
+        </div>
+        <button class="btn btn-sm btn-primary">保存设置</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card"><div class="card-header">README</div><div class="card-body small text-muted">
+      <p class="mb-2"><b>架构</b>：商品库(300 条) → BM25 本地检索(纯 Python, 中文 2-gram) → LLM 生成回答(强制标注 ASIN) → 成本/日志落库。</p>
+      <p class="mb-2"><b>评测</b>：20 用例 × 2 模型后台串行；Hit@K / 引用准确率 / 拒答正确率 / 延迟 / token / 成本六项指标，报告可导出 Markdown。</p>
+      <p class="mb-0"><b>诚实底线</b>：LLM 不可用时自动离线兜底并在页面/报告中红字标注，绝不伪造指标；检索得分不足时明确拒答。</p>
+      <hr>
+      <p class="mb-0">环境模型（api.env）: <code>{{ env_model or '未配置' }}</code></p>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}对话助手 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}对话助手{% endblock %}
+{% block content %}
+{% if not llm_available %}
+<div class="alert alert-warning py-2 small mb-3">⚠️ 大模型服务暂不可用，当前处于<b>离线兜底模式</b>：回答为检索结果直出，未经大模型生成。配置见 <a href="{{ url_for('settings') }}">系统设置</a>。</div>
+{% endif %}
+<div class="card mb-3"><div class="card-body">
+  <form id="chatForm" class="row g-2">
+    <div class="col">
+      <input class="form-control" id="q" placeholder="例如：我想找适合油性皮肤的保湿产品，有什么推荐？" required autofocus>
+    </div>
+    <div class="col-auto"><button class="btn btn-primary px-4" id="sendBtn">发送</button></div>
+  </form>
+  <div class="text-muted small mt-2">💡 助手会先用 <b>BM25 检索</b>商品库（纯本地、可解释），再让大模型基于检索结果作答并<b>强制标注 ASIN</b>；检索得分不足时明确拒答，不编造。</div>
+</div></div>
+
+<div id="result"></div>
+
+<div class="card"><div class="card-header">历史会话（最近 20 条，按时间倒序）</div><div class="card-body p-0">
+  <div class="list-group list-group-flush">
+    {% for h in history %}
+    <div class="list-group-item">
+      <div class="d-flex justify-content-between">
+        <div class="fw-semibold small">Q: {{ h.question }}</div>
+        <span class="text-muted small">{{ h.created_at[:16] }} · {{ '离线' if h.mode=='offline' else 'LLM' }} · {{ h.cost_fen }}分 · {{ h.latency_ms }}ms</span>
+      </div>
+      <pre class="small mt-1 mb-0 text-wrap" style="white-space:pre-wrap">{{ h.answer[:400] }}{% if h.answer|length > 400 %}…{% endif %}</pre>
+    </div>
+    {% else %}<div class="list-group-item text-muted small">还没有对话记录，先问一句试试。</div>{% endfor %}
+  </div>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const form = document.getElementById('chatForm');
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const q = document.getElementById('q').value.trim();
+    if (!q) return;
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    const box = document.getElementById('result');
+    box.innerHTML = '<div class="alert alert-light border small">检索中…</div>';
+    try {
+      const fd = new FormData();
+      fd.append('q', q);
+      const resp = await fetch('/chat', {method: 'POST', body: fd});
+      const d = await resp.json();
+      if (!d.ok) { box.innerHTML = '<div class="alert alert-danger py-2">' + d.msg + '</div>'; return; }
+      let html = '<div class="card mb-3"><div class="card-body">';
+      if (d.mode === 'offline') {
+        html += '<div class="badge text-bg-warning mb-2">离线兜底</div>';
+      } else {
+        html += '<div class="badge text-bg-success mb-2">LLM 生成</div>';
+      }
+      html += '<span class="text-muted small ms-2">命中 ' + d.hit_count + ' 条 · ' + d.latency_ms + 'ms · ' + d.tokens + ' tokens · ' + d.cost_fen + ' 分</span>'
+           + '<pre class="small mt-2 mb-0" style="white-space:pre-wrap">' + d.answer + '</pre>'
+           + '<div class="mt-2 small">';
+      (d.items || []).forEach(function (it) {
+        html += '<div class="border rounded p-2 my-1"><div class="d-flex justify-content-between">'
+             + '<span><b>' + it.title + '</b> <span class="badge text-bg-light text-dark ms-1">' + it.leaf + '</span></span>'
+             + '<span class="text-danger fw-bold">¥' + (it.price_fen / 100).toFixed(2) + '</span></div>'
+             + '<div class="text-muted">ASIN: ' + it.asin + ' · 得分 ' + it.score + '</div></div>';
+      });
+      html += '</div></div></div>';
+      box.innerHTML = html;
+    } catch (err) {
+      box.innerHTML = '<div class="alert alert-danger py-2">请求失败: ' + err + '</div>';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}租户工作台 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}{{ t.name }} 工作台{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% for k, label, color, qk in [('users','用户数','primary','user_quota'),('books','图书数','info','book_quota'),('api_calls','本月 API 调用','warning','api_monthly_quota')] %}
+  <div class="col-md-2 col-6"><div class="card text-bg-{{ color }}"><div class="card-body py-2">
+    <div class="small opacity-75">{{ label }}</div><div class="fs-4 fw-bold">{{ usage.get(k, 0) }}</div>
+    <div class="small opacity-75">配额 {{ t[qk] if t else '-' }}</div>
+  </div></div></div>
+  {% endfor %}
+  {% for k, v in stats.items() %}<div class="col-md-3 col-6"><div class="card"><div class="card-body py-2">
+    <div class="text-muted small">{{ k }}</div><div class="fs-4 fw-semibold">{{ v }}</div>
+  </div></div></div>{% endfor %}
+</div>
+
+{% if over %}
+<div class="alert alert-danger py-2 small">
+  ⚠️ 配额已满：{% for k, v in over.items() %}{% if v %}{{ {'users':'用户数','books':'图书数','api_calls':'API 月调用量'}.get(k, k) }}、{% endif %}{% endfor %}超过配额后新增会被拒绝，API 返回 429。→ <a href="{{ url_for('quota') }}" class="alert-link">查看配额用量</a>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header">最近借阅</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>图书</th><th>借阅人</th><th>借出</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for r in recent_borrows %}
+          <tr>
+            <td>{{ r.title or ('#' ~ r.book_id) }}</td>
+            <td>{{ r.reader_name }}</td>
+            <td class="small text-muted">{{ r.borrow_date[:10] }}</td>
+            <td><span class="badge {{ 'text-bg-primary' if r.status=='borrowed' else ('text-bg-success' if r.status=='returned' else 'text-bg-danger') }}">
+              {{ BORROW_STATUS_LABELS.get(r.status, r.status) }}</span></td>
+          </tr>
+        {% else %}<tr><td colspan="4" class="text-center text-muted py-3">暂无借阅</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header">馆藏分类分布</div><div class="card-body">
+      <div id="catChart" style="height:230px"></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card mt-3"><div class="card-header">最近 API 调用</div><div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>时间</th><th>路径</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for r in recent_logs %}
+      <tr><td class="small text-muted">{{ r.created_at[:19] }}</td><td class="small">{{ r.path }}</td>
+        <td>{% if r.status_code < 400 %}<span class="badge text-bg-success">{{ r.status_code }}</span>
+            {% else %}<span class="badge text-bg-danger">{{ r.status_code }}</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="3" class="text-center text-muted py-3">暂无调用</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const catDist = {{ cat_dist|tojson }};
+  echarts.init(document.getElementById('catChart')).setOption({
+    tooltip: {trigger: 'item', formatter: '{b}: {c} 本 ({d}%)'},
+    legend: {bottom: 0, type: 'scroll'},
+    series: [{type: 'pie', radius: ['40%', '66%'], data: catDist.map(x => ({name: x.name, value: x.c}))}]
+  });
+</script>
+{% endblock %}

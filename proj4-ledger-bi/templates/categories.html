@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}分类管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}分类管理{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header">新增分类（管理员）</div><div class="card-body">
+      <form method="post" action="{{ url_for('categories') }}">
+        <div class="mb-3"><label class="form-label small">分类名称 *</label>
+          <input class="form-control" name="name" required></div>
+        <div class="mb-3"><label class="form-label small">收支类型 *</label>
+          <select class="form-select" name="type" required>
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select></div>
+        <div class="mb-3"><label class="form-label small">上级分类（二级分类）</label>
+          <select class="form-select" name="parent_id">
+            <option value="">作为一级分类</option>
+            {% for t in tree %}<option value="{{ t.id }}">→ {{ t.name }}</option>{% endfor %}
+          </select></div>
+        <button class="btn btn-sm btn-primary">保存</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card"><div class="card-header">分类树</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>名称</th><th>类型</th><th>近 90 天使用</th><th class="text-end">操作</th></tr></thead>
+        <tbody>
+        {% for t in tree %}
+          <tr class="table-light">
+            <td class="fw-semibold">{{ t.name }}</td>
+            <td>{% if t.type=='income' %}<span class="badge text-bg-success">收入</span>{% else %}<span class="badge text-bg-danger">支出</span>{% endif %}</td>
+            <td class="small">{{ used.get(t.id, 0) }} 笔</td>
+            <td class="text-end">
+              {% if t.children %}<span class="text-muted small">{{ t.children|length }} 个子分类</span>
+              {% else %}
+              <form class="d-inline" method="post" action="{{ url_for('category_delete', cid=t.id) }}" onsubmit="return confirm('删除分类 {{ t.name }}?')">
+                <button class="btn btn-sm btn-outline-danger">删除</button>
+              </form>{% endif %}
+            </td>
+          </tr>
+          {% for c in t.children %}
+          <tr>
+            <td class="ps-4">└ {{ c.name }}</td>
+            <td><span class="badge text-bg-light text-dark">{{ '收入' if c.type=='income' else '支出' }}</span></td>
+            <td class="small">{{ used.get(c.id, 0) }} 笔</td>
+            <td class="text-end">
+              <form class="d-inline" method="post" action="{{ url_for('category_delete', cid=c.id) }}" onsubmit="return confirm('删除分类 {{ c.name }}?')">
+                <button class="btn btn-sm btn-outline-danger">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

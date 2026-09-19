@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}隔离验证 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}租户隔离验证{% endblock %}
+{% block content %}
+<div class="alert alert-info small py-2">
+  <strong>验证方式：</strong>用两个不同租户的账号分别登录本页（或平台管理员登录），下方表格展示<b>该账号能看到的租户行数</b>。
+  租户账号只会看到自己那行（查询强制注入 <code>tenant_id</code> 条件，跨租户访问业务资源一律 404）；平台管理员才能看到全部租户。
+</div>
+<div class="card"><div class="card-header">当前视图：{{ scope }}</div><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>租户</th><th>状态</th><th class="text-end">图书</th><th class="text-end">借阅</th><th class="text-end">用户</th></tr></thead>
+    <tbody>
+    {% for r in sample %}
+      <tr>
+        <td class="fw-semibold">{{ r.name }}</td>
+        <td>{% if r.status=='active' %}<span class="badge text-bg-success">正常</span>{% else %}<span class="badge text-bg-danger">已停用</span>{% endif %}</td>
+        <td class="text-end">{{ r.books }}</td>
+        <td class="text-end">{{ r.borrows }}</td>
+        <td class="text-end">{{ r.users }}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-center text-muted py-3">无数据</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+<div class="text-muted small mt-2">
+  演示路径：退出登录 → 分别用 <code>tadmin1/admin123</code>（租户一）与 <code>tadmin2/admin123</code>（租户二）登录本页对比行数；
+  也可在图书列表用租户一账号直接访问租户二图书的 URL（如 /books/9999），应得到 404 而非 403。
+</div>
+{% endblock %}

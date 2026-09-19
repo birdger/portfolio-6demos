@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}用户活跃 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}用户活跃分析{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-2 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">活跃用户</div><div class="fs-4 fw-bold">{{ users_total }}</div></div></div></div>
+  <div class="col-md-2 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">有事件天数</div><div class="fs-4 fw-bold">{{ days_total }}</div></div></div></div>
+  <div class="col-md-2 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">日均活跃(DAU)</div><div class="fs-4 fw-bold">{{ '%.1f'|format(dau_avg) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">次日留存 D1</div><div class="fs-4 fw-bold {{ 'text-success' if d1_rate and d1_rate>=0.3 }}">{{ '%.1f'|format(d1_rate*100) if d1_rate is not none else '—' }}%</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">7 日留存 D7</div><div class="fs-4 fw-bold">{{ '%.1f'|format(d7_rate*100) if d7_rate is not none else '—' }}%</div></div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">每日活跃与留存（近 30 天）</div><div class="card-body">
+      <div id="retChart" style="height:300px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">行为漏斗（窗口函数判连续记账）</div><div class="card-body">
+      {% for s in funnel %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between small mb-1">
+          <span>{{ s.name }}</span>
+          <span class="fw-semibold">{{ s.value }} 人
+            {% if not loop.first %}<span class="text-muted ms-2">步骤转化 {{ '%.1f'|format(s.step) }}%</span>{% endif %}</span>
+        </div>
+        <div class="progress" style="height:16px">
+          <div class="progress-bar {{ 'bg-primary' if loop.first else ('bg-success' if loop.index0==1 else ('bg-warning' if loop.index0==2 else 'bg-danger')) }}"
+               style="width: {{ s.conv }}%"></div>
+        </div>
+        <div class="text-end small text-muted">占登录用户 {{ '%.1f'|format(s.conv) }}%</div>
+      </div>
+      {% endfor %}
+      <div class="text-muted small mt-2">口径：登录 → 记一笔 → 连续 3 天记账 → 连续 7 天记账（SQLite 窗口函数判定连续）。详见<a href="{{ url_for('metrics') }}">指标口径库</a>。</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header">同期群留存热力图（按首次活跃日，D0–D7）</div><div class="card-body">
+      <div id="heatChart" style="height:340px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">事件类型分布</div><div class="card-body">
+      <div id="evChart" style="height:240px"></div>
+      <table class="table table-sm mt-3 mb-0">
+        <thead><tr><th>事件</th><th class="text-end">次数</th><th class="text-end">用户数</th></tr></thead>
+        <tbody>
+        {% for e in ev_types %}<tr><td>{{ e.event_type }}</td><td class="text-end">{{ e.cnt }}</td><td class="text-end">{{ e.users }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      <div class="text-muted small mt-2">日均记账事件：{{ '%.1f'|format(per_day) }} 条/天</div>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const ret = {{ ret_series|tojson }};
+  echarts.init(document.getElementById('retChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    legend: {bottom: 0},
+    grid: {left: 44, right: 40, top: 16, bottom: 36},
+    xAxis: {type: 'category', data: ret.map(x => x.d.slice(5))},
+    yAxis: {type: 'value'},
+    series: [
+      {name: 'DAU', type: 'bar', data: ret.map(x => x.dau), itemStyle: {color: '#94a3b8'}},
+      {name: 'D1%', type: 'line', smooth: true, yAxisIndex: 1, data: ret.map(x => x.d1 == null ? null : +(x.d1*100).toFixed(1))},
+      {name: 'D7%', type: 'line', smooth: true, yAxisIndex: 1, data: ret.map(x => x.d7 == null ? null : +(x.d7*100).toFixed(1))}
+    ],
+    yAxis: [{type: 'value'}, {type: 'value', min: 0, max: 100, axisLabel: {formatter: '{value}%'}}]
+  });
+  const heat = {{ heat_data|tojson }}, cohorts = {{ cohort_labels|tojson }};
+  echarts.init(document.getElementById('heatChart')).setOption({
+    tooltip: {formatter: p => `${cohorts[p.value[1]]} 首活 · D${p.value[0]}：${(p.value[2]*100).toFixed(0)}%`},
+    grid: {left: 64, right: 16, top: 8, bottom: 60},
+    xAxis: {type: 'category', data: Array.from({length: 8}, (_, i) => 'D' + i), splitArea: {show: true}},
+    yAxis: {type: 'category', data: cohorts, splitArea: {show: true}},
+    visualMap: {min: 0, max: 1, calculable: true, orient: 'horizontal', left: 'center', bottom: 0,
+                inRange: {color: ['#f1f5f9', '#4f46e5']}, formatter: v => (v*100).toFixed(0) + '%'},
+    series: [{type: 'heatmap', data: heat.map(x => [x[0], x[1], x[2]]),
+              label: {show: true, formatter: p => (p.value[2]*100).toFixed(0) + '%', fontSize: 9}}]
+  });
+  const ev = {{ ev_types|tojson }};
+  echarts.init(document.getElementById('evChart')).setOption({
+    tooltip: {trigger: 'item', formatter: '{b}: {c} 次 ({d}%)'},
+    legend: {bottom: 0},
+    series: [{type: 'pie', radius: ['38%', '62%'], data: ev.map(x => ({name: x.event_type, value: x.cnt}))}]
+  });
+</script>
+{% endblock %}

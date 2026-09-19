@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}指标口径库 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}指标口径库 <span class="badge text-bg-secondary align-middle fs-6">{{ total }} 个指标</span>{% endblock %}
+{% block content %}
+<p class="text-muted small">本页是系统内所有指标计算的单一事实来源：每个指标给出公式、统计口径、SQL 与易错点。看板/报告页上的数字都可以回到这里对齐。</p>
+{% for page_name, items in groups.items() %}
+<div class="card mb-3"><div class="card-header">{{ page_name }}</div><div class="card-body p-0">
+  <div class="accordion accordion-flush" id="acc-{{ loop.index }}">
+    {% for m in items %}
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button collapsed py-2" data-bs-toggle="collapse"
+          data-bs-target="#m-{{ m.key }}">
+        <span class="me-2 fw-semibold" id="m-{{ m.key }}">{{ m.name }}</span>
+        <span class="text-muted small">{{ m.formula }}</span></button></h2>
+      <div id="m-{{ m.key }}-body" class="accordion-collapse collapse" data-bs-parent="#acc-{{ loop.index }}">
+        <div class="accordion-body small">
+          <div class="mb-2"><span class="text-muted">口径：</span>{{ m.caliber }}</div>
+          <div class="mb-2"><span class="text-muted">SQL：</span>
+            <pre class="bg-light p-2 rounded mb-0"><code>{{ m.sql }}</code></pre></div>
+          <div><span class="text-danger">易错点：</span>{{ m.pitfall }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div></div>
+{% endfor %}
+{% endblock %}

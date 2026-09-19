@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}分析报告 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}分析报告{% endblock %}
+{% block content %}
+<div class="alert alert-info py-2 small">本页为「自动分析报告」：每个结论由一条 SQL 计算而来，点击结论后的「口径」按钮可查看该指标的口径、SQL 与易错点（见<a href="{{ url_for('metrics') }}">指标口径库</a>）。</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">本月核心指标</div><div class="card-body">
+      <table class="table table-sm mb-3">
+        <tr><td class="text-muted">收入</td><td class="text-end fw-semibold text-success">¥{{ '%.2f'|format(kpi.inc/100) }}</td></tr>
+        <tr><td class="text-muted">支出</td><td class="text-end fw-semibold text-danger">¥{{ '%.2f'|format(kpi.exp/100) }}</td></tr>
+        <tr><td class="text-muted">笔数 / 天数</td><td class="text-end">{{ kpi.cnt }} 笔 / {{ kpi.days or '-' }} 天</td></tr>
+        <tr><td class="text-muted">笔均支出</td><td class="text-end">¥{{ '%.2f'|format(kpi.exp/kpi.cnt/100) if kpi.cnt else '—' }}</td></tr>
+        <tr><td class="text-muted">支出环比</td><td class="text-end">{{ '%.1f'|format(mom*100) if mom is not none else '—' }}%</td></tr>
+        <tr><td class="text-muted">结余率</td><td class="text-end {{ 'text-success' if saving and saving>=0 }}">{{ '%.1f'|format(saving*100) if saving is not none else '—' }}%</td></tr>
+        <tr><td class="text-muted">预算执行率</td><td class="text-end {{ 'text-danger' if bud_rate and bud_rate>100 }}">{{ '%.1f'|format(bud_rate*100) if bud_rate else '未设置' }}%</td></tr>
+      </table>
+      {% if biggest %}
+      <div class="alert alert-warning py-2 small mb-0">🔍 本月最大单笔：<strong>{{ biggest.cat_name }}</strong>
+        ¥{{ '%.2f'|format(biggest.amount/100) }}（{{ biggest.trans_date }}）
+        {% if biggest.note %}· {{ biggest.note }}{% endif %}</div>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">自动结论</div><div class="card-body">
+      {% for c in conclusions %}
+      <div class="border-start border-4 border-primary ps-3 mb-3">
+        <div class="fw-semibold small text-primary mb-1">{{ c.title }}</div>
+        <div class="small">{{ c.text }}</div>
+        <div class="small text-muted mt-1">口径：{{ c.hint }}
+          <a class="ms-1 small" href="{{ url_for('metrics') }}">指标口径库 →</a></div>
+      </div>
+      {% else %}<div class="text-muted small">数据不足，暂无结论。</div>{% endfor %}
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">分类支出对比（本月 vs 上月）</div><div class="card-body">
+      <div id="catChart" style="height:280px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">本月消费节奏（按星期）</div><div class="card-body">
+      <div id="weekChart" style="height:280px"></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header">近 6 个月结余趋势</div><div class="card-body">
+      <div id="balChart" style="height:260px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header">分类明细</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>分类</th><th class="text-end">本月(元)</th><th class="text-end">上月(元)</th><th class="text-end">变动</th></tr></thead>
+        <tbody>
+        {% for r in cat_cmp %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td class="text-end">¥{{ '%.2f'|format(r.cur/100) }}</td>
+            <td class="text-end text-muted">¥{{ '%.2f'|format(r.last/100) }}</td>
+            <td class="text-end {{ 'text-danger' if r.delta|default(0) > 0 else 'text-success' }}">
+              {{ '%+.2f'|format(r.delta/100) if r.delta is defined and r.delta is not none else '—' }}</td>
+          </tr>
+        {% else %}<tr><td colspan="4" class="text-center text-muted py-3">暂无分类数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const catCmp = {{ cat_cmp|tojson }};
+  echarts.init(document.getElementById('catChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    legend: {bottom: 0},
+    grid: {left: 56, right: 16, top: 16, bottom: 36},
+    xAxis: {type: 'category', data: catCmp.map(x => x.name), axisLabel: {interval: 0, rotate: 30, fontSize: 10}},
+    yAxis: {type: 'value'},
+    series: [
+      {name: '本月', type: 'bar', data: catCmp.map(x => (x.cur/100).toFixed(2))},
+      {name: '上月', type: 'bar', data: catCmp.map(x => (x.last/100).toFixed(2))}
+    ]
+  });
+  const week = {{ weekday_series|tojson }};
+  echarts.init(document.getElementById('weekChart')).setOption({
+    tooltip: {trigger: 'axis', formatter: '{b}: ¥{c}'},
+    grid: {left: 56, right: 16, top: 16, bottom: 24},
+    xAxis: {type: 'category', data: week.map(x => x.name)},
+    yAxis: {type: 'value'},
+    series: [{type: 'bar', data: week.map(x => x.amt), itemStyle: {color: '#f59e0b'}}]
+  });
+  const bal = {{ bal_series|tojson }};
+  echarts.init(document.getElementById('balChart')).setOption({
+    tooltip: {trigger: 'axis', formatter: '{b}: ¥{c}'},
+    grid: {left: 56, right: 16, top: 16, bottom: 24},
+    xAxis: {type: 'category', data: bal.map(x => x.month)},
+    yAxis: {type: 'value'},
+    series: [{type: 'line', smooth: true, areaStyle: {opacity: .15},
+              data: bal.map(x => x.balance), itemStyle: {color: '#6366f1'}}]
+  });
+</script>
+{% endblock %}

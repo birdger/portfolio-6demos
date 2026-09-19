@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}销售管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}销售管理{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex justify-content-between align-items-center">
+    <span class="text-muted small">共 {{ rows|length }} 张销售单 · 流程：待出库(冻结库存) →（出库）已发货+生成运单 →（签收）已完成+收款</span>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新建销售单</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr>
+        <th>销售单号</th><th>客户</th><th class="text-end">品项</th><th class="text-end">金额</th>
+        <th>状态</th><th>运单</th><th>物流状态</th><th>创建时间</th><th class="text-end">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="fw-semibold">{{ r.no }}</td>
+          <td>{{ r.customer_name or '-' }}</td>
+          <td class="text-end">{{ r.item_count }}</td>
+          <td class="text-end">¥{{ '%.2f'|format(r.total_amount/100) }}</td>
+          <td><span class="badge {{ SO_STATUS[r.status][1] }}">{{ SO_STATUS[r.status][0] }}</span></td>
+          <td class="small">
+            {% if r.wb_id %}<a href="{{ url_for('waybill_detail', wb_id=r.wb_id) }}">{{ r.wb_no }}</a>{% else %}-{% endif %}
+          </td>
+          <td>{% if r.wb_status %}<span class="badge {{ WB_STATUS[r.wb_status][1] }}">{{ WB_STATUS[r.wb_status][0] }}</span>{% else %}-{% endif %}</td>
+          <td class="small text-muted">{{ r.created_at }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#d{{ r.id }}">明细</button>
+            {% if r.status == 'pending' %}
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#ship{{ r.id }}">出库发货</button>
+            {% endif %}
+            {% if r.status in ('shipped', 'finished') %}
+            <form class="d-inline" method="post" action="{{ url_for('sale_pay', so_id=r.id) }}">
+              <button class="btn btn-sm btn-success">收款</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for r in rows %}
+<div class="modal fade" id="d{{ r.id }}"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">销售单 {{ r.no }} 明细</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="row mb-3 small">
+      <div class="col-md-3"><span class="text-muted">客户：</span>{{ r.customer_name }}</div>
+      <div class="col-md-3"><span class="text-muted">状态：</span>{{ SO_STATUS[r.status][0] }}</div>
+      <div class="col-md-3"><span class="text-muted">金额：</span>¥{{ '%.2f'|format(r.total_amount/100) }}</div>
+      <div class="col-md-3"><span class="text-muted">运单：</span>{{ r.wb_no or '未生成' }}</div>
+    </div>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>编码</th><th>商品</th><th class="text-end">数量</th><th class="text-end">单价</th><th class="text-end">小计</th></tr></thead>
+      <tbody>
+      {% for it in imap.get(r.id, []) %}
+        <tr><td class="text-muted small">{{ it.product_code }}</td><td>{{ it.product_name }}</td>
+        <td class="text-end">{{ it.qty }} {{ it.unit }}</td>
+        <td class="text-end">¥{{ '%.2f'|format(it.price/100) }}</td>
+        <td class="text-end">¥{{ '%.2f'|format(it.qty*it.price/100) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div></div>
+
+{% if r.status == 'pending' %}
+<div class="modal fade" id="ship{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('sale_ship', so_id=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">出库发货 · {{ r.no }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="alert alert-warning small mb-3">出库将扣减账面库存并解冻，同时自动生成运单与首条轨迹。</div>
+      <label class="form-label small">承运商</label>
+      <select class="form-select" name="carrier">
+        {% for c in CARRIERS %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">确认出库</button></div>
+  </form>
+</div></div></div>
+{% endif %}
+{% endfor %}
+
+<div class="modal fade" id="addModal"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <form method="post" action="{{ url_for('sale_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新建销售单</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"><label class="form-label small">客户 *</label>
+          <select class="form-select" name="customer_id" required>
+            {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <label class="form-label small">销售明细（单价为元，留空行会被忽略）</label>
+      <table class="table table-sm align-middle" id="soTable">
+        <thead><tr><th>商品</th><th style="width:110px">数量</th><th style="width:130px">单价(元)</th><th style="width:60px"></th></tr></thead>
+        <tbody>
+        <tr>
+          <td><select class="form-select form-select-sm" name="si_product_id">
+            {% for p in products %}<option value="{{ p.id }}" data-price="{{ '%.2f'|format(p.sale_price/100) }}">{{ p.code }} {{ p.name }}（可用 {{ p.available_stock }}）</option>{% endfor %}
+          </select></td>
+          <td><input class="form-control form-control-sm" name="si_qty" type="number" value="1" min="1"></td>
+          <td><input class="form-control form-control-sm" name="si_price" type="number" step="0.01" value="{{ '%.2f'|format(products[0].sale_price/100) if products }}"></td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="delRow2(this)">×</button></td>
+        </tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow2()">+ 添加一行</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">创建销售单（冻结库存）</button></div>
+  </form>
+</div></div></div>
+
+<script>
+function addRow2() {
+  var tb = document.querySelector('#soTable tbody');
+  tb.appendChild(tb.rows[0].cloneNode(true));
+}
+function delRow2(btn) {
+  var tb = document.querySelector('#soTable tbody');
+  if (tb.rows.length > 1) btn.closest('tr').remove();
+}
+document.addEventListener('change', function (e) {
+  if (e.target.name === 'si_product_id') {
+    var p = e.target.selectedOptions[0].dataset.price;
+    e.target.closest('tr').querySelector('input[name="si_price"]').value = p;
+  }
+});
+</script>
+{% endblock %}

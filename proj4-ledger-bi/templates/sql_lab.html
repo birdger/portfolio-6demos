@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}SQL 工作台 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}SQL 工作台{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header">内置查询模板</div><div class="list-group list-group-flush">
+      {% for t in templates %}
+      <a class="list-group-item list-group-item-action py-2 {{ 'active' if qid==t.id }}"
+         href="{{ url_for('sql_lab', qid=t.id) }}">
+        <div class="fw-semibold small">{{ t.title }}</div>
+        <div class="text-muted small">{{ t.description or '' }}</div>
+      </a>
+      {% endfor %}
+    </div></div>
+    <div class="card mt-3"><div class="card-header">参数</div><div class="card-body small">
+      <form method="get" action="{{ url_for('sql_lab') }}">
+        <input type="hidden" name="qid" value="{{ qid or '' }}">
+        <div class="mb-2"><label class="form-label">月份（替换 :month）</label>
+          <input class="form-control form-control-sm" name="month" type="month" value="{{ month or now_month }}"></div>
+        <div class="mb-2"><label class="form-label">用户 ID（替换 :uid，留空=本人，0=全部）</label>
+          <input class="form-control form-control-sm" name="uid" type="number" value="{{ uid or '' }}"></div>
+        <button class="btn btn-sm btn-outline-primary">应用参数</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card"><div class="card-header">查询（只读 SELECT，禁写操作已拦截）</div><div class="card-body">
+      <form method="post" action="{{ url_for('sql_lab') }}">
+        <input type="hidden" name="qid" value="{{ qid or '' }}">
+        <input type="hidden" name="month" value="{{ month or now_month }}">
+        <input type="hidden" name="uid" value="{{ uid or '' }}">
+        <textarea class="form-control font-monospace small" name="sql_text" rows="8" spellcheck="false">{{ sql_text or '' }}</textarea>
+        <div class="d-flex justify-content-between mt-2 align-items-center">
+          <span class="text-muted small">{{ desc or '' }}</span>
+          <button class="btn btn-sm btn-primary">执行</button>
+        </div>
+      </form>
+      {% if err %}<div class="alert alert-danger mt-3 py-2 small font-monospace mb-0">{{ err }}</div>{% endif %}
+      {% if cols %}
+      <div class="mt-3">
+        <div class="small text-muted mb-1">耗时 {{ '%.0f'|format((elapsed or 0)*1000) }} ms · {{ rows|length }} 行</div>
+        <div class="table-responsive"><table class="table table-sm table-striped mb-0">
+          <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for r in rows %}<tr>{% for c in cols %}<td class="small">{{ r[c] if r[c] is not none else '' }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+# venv / python
+.venv/
+__pycache__/
+*.pyc
+
+# 运行时产物
+*.db
+_svc.log
+_ck*.txt
+
+# 凭据与本地配置(绝不入库)
+_shared/api.env
+
+# 临时/杂项
+*.tmp
+.DS_Store

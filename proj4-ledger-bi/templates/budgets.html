@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}预算设置 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}预算设置{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header">本月预算</div><div class="card-body">
+      {% if cur %}
+      <div class="d-flex justify-content-between mb-1">
+        <span class="text-muted small">本月支出</span>
+        <span class="fw-semibold">¥{{ '%.2f'|format(cur.spent/100) }} / ¥{{ '%.2f'|format(cur.amount/100) }}</span>
+      </div>
+      <div class="progress mb-1" style="height:12px">
+        <div class="progress-bar {{ 'bg-danger' if cur.spent > cur.amount else ('bg-warning' if cur.spent > cur.amount*0.8 else 'bg-success') }}"
+             style="width: {{ [cur.spent*100/cur.amount, 100]|min if cur.amount else 0 }}%"></div>
+      </div>
+      <div class="small text-muted mb-3">剩余 ¥{{ '%.2f'|format(cur.left/100) }}
+        {% if cur.spent > cur.amount %}<span class="text-danger fw-semibold">已超支</span>{% endif %}</div>
+      {% else %}<div class="text-muted small mb-3">本月未设置预算。</div>{% endif %}
+      <form method="post" action="{{ url_for('budgets') }}">
+        <div class="mb-2"><label class="form-label small">月份</label>
+          <select class="form-select" name="month">
+            {% for m in months %}<option value="{{ m }}" {{ 'selected' if m==now_month }}>{{ m }}</option>{% endfor %}
+          </select></div>
+        <div class="mb-3"><label class="form-label small">预算金额（元）</label>
+          <input class="form-control" name="amount" type="number" step="0.01" min="0" placeholder="0.00" required></div>
+        <button class="btn btn-sm btn-primary">保存预算</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card"><div class="card-header">预算列表（近 6 个月）</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>月份</th><th class="text-end">预算(元)</th><th class="text-end">支出(元)</th>
+          <th class="text-end">剩余(元)</th><th>执行率</th><th class="text-end">操作</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.month }}</td>
+            <td class="text-end">{{ '%.2f'|format(r.amount/100) }}</td>
+            <td class="text-end">{{ '%.2f'|format(r.spent/100) }}</td>
+            <td class="text-end {{ 'text-danger' if r.left < 0 else 'text-success' }}">{{ '%.2f'|format(r.left/100) }}</td>
+            <td>
+              <div class="progress" style="height:8px;max-width:160px">
+                <div class="progress-bar {{ 'bg-danger' if r.rate > 100 else 'bg-success' }}" style="width: {{ [r.rate, 100]|min }}%"></div>
+              </div>
+              <span class="small text-muted">{{ '%.0f'|format(r.rate) }}%</span>
+            </td>
+            <td class="text-end">
+              <form class="d-inline" method="post" action="{{ url_for('budget_delete', bid=r.id) }}" onsubmit="return confirm('删除 {{ r.month }} 的预算?')">
+                <button class="btn btn-sm btn-outline-danger">删除</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}<tr><td colspan="6" class="text-center text-muted py-3">暂无预算</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+    <div class="card mt-3"><div class="card-header">历史月度支出（参考）</div><div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>月份</th><th class="text-end">支出(元)</th></tr></thead>
+        <tbody>
+        {% for h in hist %}<tr><td>{{ h.m }}</td><td class="text-end">{{ '%.2f'|format(h.amt/100) }}</td></tr>
+        {% else %}<tr><td colspan="2" class="text-center text-muted py-3">暂无数据</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

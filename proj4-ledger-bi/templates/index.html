@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}仪表盘 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}仪表盘{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for label, value in stats.items() %}
+  <div class="col-md-3 col-sm-6">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="stat-label">{{ label }}</div>
+        <div class="stat-value">{{ value }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="card">
+  <div class="card-body">
+    <h5>👋 欢迎, {{ current_user.display_name }}</h5>
+    <p class="text-muted mb-1">当前角色: <span class="badge text-bg-info">{{ ROLE_LABELS.get(current_user.role, current_user.role) }}</span></p>
+    <p class="text-muted small mb-0">从左侧菜单进入功能模块。本项目由统一脚手架构建: Flask + SQLite + Bootstrap 5。</p>
+  </div>
+</div>
+{% endblock %}

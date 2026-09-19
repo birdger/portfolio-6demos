@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}平台概览 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}平台概览{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% for k, label, color in [('tenant_cnt','租户数','primary'),('user_cnt','平台账号','info'),('book_cnt','图书总量','success'),('call_cnt','本月 API 调用','warning'),('err_cnt','接口错误数','danger')] %}
+  <div class="col-md-2 col-6"><div class="card text-bg-{{ color }}"><div class="card-body py-2">
+    <div class="small opacity-75">{{ label }}</div><div class="fs-4 fw-bold">{{ stats.get(k, 0) }}</div>
+  </div></div></div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">租户列表</div><div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>租户</th><th>套餐</th><th>联系人</th><th>状态</th><th>到期</th><th class="text-end">操作</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="fw-semibold">{{ r.name }}</td>
+            <td class="small">{{ r.plan_name or '未分配' }}</td>
+            <td class="small">{{ r.contact or '-' }}</td>
+            <td>{% if r.status=='active' %}<span class="badge text-bg-success">正常</span>{% else %}<span class="badge text-bg-danger">已停用</span>{% endif %}</td>
+            <td class="small text-muted">{{ r.expire_date or '-' }}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('tenants') }}">管理</a></td>
+          </tr>
+        {% else %}<tr><td colspan="6" class="text-center text-muted py-3">暂无租户</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">套餐分布</div><div class="card-body"><div id="planChart" style="height:180px"></div></div></div>
+    <div class="card"><div class="card-header">近 7 日 API 调用与审计动作</div><div class="card-body"><div id="trendChart" style="height:180px"></div></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const planDist = {{ plan_dist|tojson }};
+  echarts.init(document.getElementById('planChart')).setOption({
+    tooltip: {trigger: 'item'},
+    series: [{type: 'pie', radius: ['40%', '68%'], data: planDist.map(x => ({name: x.name, value: x.c}))}]
+  });
+  const apiTrend = {{ api_trend|tojson }};
+  echarts.init(document.getElementById('trendChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    legend: {bottom: 0, textStyle: {fontSize: 10}},
+    grid: {left: 34, right: 12, top: 14, bottom: 36},
+    xAxis: {type: 'category', data: apiTrend.map(x => x.d)},
+    yAxis: {type: 'value'},
+    series: [
+      {name: 'API 调用', type: 'line', smooth: true, data: apiTrend.map(x => x.calls), itemStyle: {color: '#6366f1'}},
+      {name: '审计动作', type: 'line', smooth: true, data: apiTrend.map(x => x.actions), itemStyle: {color: '#f59e0b'}}
+    ]
+  });
+</script>
+{% endblock %}

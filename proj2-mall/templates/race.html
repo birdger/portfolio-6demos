@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}抢购并发演示 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}⚡ 抢购并发演示{% endblock %}
+{% block content %}
+<div class="alert alert-info small py-2">
+  <strong>演示目标：证明不超卖。</strong>点击「并发抢购」后，浏览器会对同一商品同时发出
+  <code>N</code> 个请求（默认 10）。后端用条件更新 <code>UPDATE ... WHERE stock&gt;=?</code> 原子扣减，
+  <strong>成功数 ≤ 剩余库存</strong>，多出来的请求全部失败。抢到即生成已支付订单（演示链路，不走支付）。
+</div>
+<div class="row g-3">
+  {% for p in products %}
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <div class="fw-semibold mb-1">{{ p.title }}</div>
+      <div class="small text-muted mb-2">{{ p.subtitle or '' }}</div>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-danger fw-bold">¥{{ '%.2f'|format(p.price/100) }}</span>
+        <span class="badge text-bg-warning">剩余库存 <span id="stock-{{ p.id }}">{{ p.stock - p.frozen_stock }}</span></span>
+      </div>
+      <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" id="n-{{ p.id }}" style="max-width:110px">
+          <option value="10">10 并发</option><option value="30">30 并发</option><option value="60">60 并发</option>
+        </select>
+        <button class="btn btn-danger btn-sm flex-fill" onclick="race({{ p.id }})">🚀 并发抢购</button>
+      </div>
+      <div class="small mt-2 text-muted" id="result-{{ p.id }}">结果将显示在这里</div>
+    </div></div>
+  </div>
+  {% else %}<div class="col-12 text-center text-muted py-4">没有可用于抢购演示的商品</div>{% endfor %}
+</div>
+<script>
+  async function race(pid) {
+    const n = parseInt(document.getElementById('n-' + pid).value, 10);
+    const box = document.getElementById('result-' + pid);
+    const stock = document.getElementById('stock-' + pid);
+    box.innerHTML = '抢购进行中…';
+    const jobs = [];
+    for (let i = 0; i < n; i++) {
+      jobs.push(fetch('/demo/quick-buy', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'product_id=' + pid + '&qty=1'
+      }).then(r => r.json()));
+    }
+    const res = await Promise.all(jobs);
+    const ok = res.filter(r => r.ok).length;
+    const fail = res.length - ok;
+    stock.textContent = Math.max(0, parseInt(stock.textContent, 10) - ok);
+    box.innerHTML = '<span class="text-success fw-semibold">成功 ' + ok + '</span> / ' +
+      '<span class="text-danger fw-semibold">失败 ' + fail + '</span>' +
+      '（成功数 ≤ 库存，未超卖' + (ok > 0 ? ' ✅' : '') + '）';
+  }
+</script>
+{% endblock %}

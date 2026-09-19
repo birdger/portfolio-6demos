@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}租户成员 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}租户成员（{{ t.name }}）{% endblock %}
+{% block content %}
+{% if over.get('users') %}
+<div class="alert alert-danger py-2 small">⚠️ 用户数已达套餐配额上限（{{ usage.users }}/{{ t.user_quota }}），不能继续新增成员。</div>
+{% endif %}
+<div class="card mb-3"><div class="card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col"><span class="text-muted small">租户成员仅能访问本租户数据（行级隔离）。管理员可查看 API 管理与配额用量。</span></div>
+    <div class="col-auto"><span class="text-muted small me-2">{{ usage.users }}/{{ t.user_quota }} 人</span>
+      {% if not over.get('users') %}<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增成员</button>{% endif %}</div>
+  </div>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="fw-semibold">{{ r.username }}</td>
+        <td>{{ r.display_name }}</td>
+        <td>{% if r.role=='tenant_admin' %}<span class="badge text-bg-primary">管理员</span>
+            {% else %}<span class="badge text-bg-light text-dark">成员</span>{% endif %}</td>
+        <td class="small text-muted">{{ r.created_at[:16] }}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#reset{{ r.id }}">重置密码</button>
+          {% if r.username != g.user.username %}
+          <form class="d-inline" method="post" action="{{ url_for('tu_delete', uid=r.id) }}" onsubmit="return confirm('删除成员 {{ r.username }}?')">
+            <button class="btn btn-sm btn-outline-danger">删除</button>
+          </form>{% endif %}
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-center text-muted py-4">暂无成员</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tu_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增租户成员</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">用户名 *</label><input class="form-control" name="username" required></div>
+      <div class="col-6"><label class="form-label small">初始密码</label><input class="form-control" name="password" value="user123"></div>
+      <div class="col-6"><label class="form-label small">姓名</label><input class="form-control" name="display_name"></div>
+      <div class="col-6"><label class="form-label small">角色</label>
+        <select class="form-select" name="role">
+          <option value="tenant_user">成员</option>
+          <option value="tenant_admin">管理员</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tu_edit', uid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑成员 {{ r.username }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">姓名</label><input class="form-control" name="display_name" value="{{ r.display_name }}"></div>
+      <div class="col-6"><label class="form-label small">角色</label>
+        <select class="form-select" name="role">
+          <option value="tenant_user" {{ 'selected' if r.role=='tenant_user' }}>成员</option>
+          <option value="tenant_admin" {{ 'selected' if r.role=='tenant_admin' }}>管理员</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+<div class="modal fade" id="reset{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('tu_reset', uid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">重置密码 {{ r.username }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><label class="form-label small">新密码</label>
+      <input class="form-control" name="password" value="user123"></div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">重置</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

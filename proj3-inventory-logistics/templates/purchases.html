@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}采购管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}采购管理{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex justify-content-between align-items-center">
+    <span class="text-muted small">共 {{ rows|length }} 张采购单 · 流程：待收货 →（收货入库）已入库 →（付款）已付款</span>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新建采购单</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr>
+        <th>采购单号</th><th>供应商</th><th class="text-end">品项</th><th class="text-end">数量</th>
+        <th class="text-end">金额</th><th>状态</th><th>创建时间</th><th>入库/付款</th><th class="text-end">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="fw-semibold">{{ r.no }}</td>
+          <td>{{ r.supplier_name or '-' }}</td>
+          <td class="text-end">{{ r.item_count }}</td>
+          <td class="text-end">{{ r.qty_sum }}</td>
+          <td class="text-end">¥{{ '%.2f'|format(r.total_amount/100) }}</td>
+          <td><span class="badge {{ PO_STATUS[r.status][1] }}">{{ PO_STATUS[r.status][0] }}</span></td>
+          <td class="small text-muted">{{ r.created_at }}</td>
+          <td class="small text-muted">
+            {% if r.received_at %}<div>入库 {{ r.received_at }}</div>{% endif %}
+            {% if r.paid_at %}<div>付款 {{ r.paid_at }}</div>{% endif %}
+            {% if not r.received_at and not r.paid_at %}-{% endif %}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#d{{ r.id }}">明细</button>
+            {% if r.status == 'pending' %}
+            <form class="d-inline" method="post" action="{{ url_for('purchase_receive', po_id=r.id) }}">
+              <button class="btn btn-sm btn-primary">收货入库</button></form>
+            {% endif %}
+            {% if r.status == 'received' %}
+            <form class="d-inline" method="post" action="{{ url_for('purchase_pay', po_id=r.id) }}">
+              <button class="btn btn-sm btn-success">付款</button></form>
+            {% endif %}
+            {% if r.status == 'paid' %}<span class="text-success small">✓ 已完成</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for r in rows %}
+<div class="modal fade" id="d{{ r.id }}"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">采购单 {{ r.no }} 明细</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="row mb-3 small">
+      <div class="col-md-4"><span class="text-muted">供应商：</span>{{ r.supplier_name }}</div>
+      <div class="col-md-4"><span class="text-muted">状态：</span>{{ PO_STATUS[r.status][0] }}</div>
+      <div class="col-md-4"><span class="text-muted">金额：</span>¥{{ '%.2f'|format(r.total_amount/100) }}</div>
+    </div>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>编码</th><th>商品</th><th class="text-end">数量</th><th class="text-end">单价</th><th class="text-end">小计</th></tr></thead>
+      <tbody>
+      {% for it in imap.get(r.id, []) %}
+        <tr><td class="text-muted small">{{ it.product_code }}</td><td>{{ it.product_name }}</td>
+        <td class="text-end">{{ it.qty }} {{ it.unit }}</td>
+        <td class="text-end">¥{{ '%.2f'|format(it.price/100) }}</td>
+        <td class="text-end">¥{{ '%.2f'|format(it.qty*it.price/100) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div></div>
+{% endfor %}
+
+<div class="modal fade" id="addModal"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <form method="post" action="{{ url_for('purchase_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新建采购单</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"><label class="form-label small">供应商 *</label>
+          <select class="form-select" name="supplier_id" required>
+            {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <label class="form-label small">采购明细（单价为元，留空行会被忽略）</label>
+      <table class="table table-sm align-middle" id="poTable">
+        <thead><tr><th>商品</th><th style="width:110px">数量</th><th style="width:130px">单价(元)</th><th style="width:60px"></th></tr></thead>
+        <tbody>
+        <tr>
+          <td><select class="form-select form-select-sm" name="pi_product_id">
+            {% for p in products %}<option value="{{ p.id }}" data-price="{{ '%.2f'|format(p.price/100) }}">{{ p.code }} {{ p.name }}</option>{% endfor %}
+          </select></td>
+          <td><input class="form-control form-control-sm" name="pi_qty" type="number" value="10" min="1"></td>
+          <td><input class="form-control form-control-sm" name="pi_price" type="number" step="0.01" value="{{ '%.2f'|format(products[0].price/100) if products }}"></td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="delRow(this)">×</button></td>
+        </tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRow()">+ 添加一行</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">创建采购单</button></div>
+  </form>
+</div></div></div>
+
+<script>
+function addRow() {
+  var tb = document.querySelector('#poTable tbody');
+  var row = tb.rows[0].cloneNode(true);
+  tb.appendChild(row);
+}
+function delRow(btn) {
+  var tb = document.querySelector('#poTable tbody');
+  if (tb.rows.length > 1) btn.closest('tr').remove();
+}
+document.addEventListener('change', function (e) {
+  if (e.target.name === 'pi_product_id') {
+    var p = e.target.selectedOptions[0].dataset.price;
+    var row = e.target.closest('tr');
+    row.querySelector('input[name="pi_price"]').value = p;
+  }
+});
+</script>
+{% endblock %}

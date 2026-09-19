@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}读者管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}读者管理{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto"><input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="姓名 / 卡号 / 电话"></div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="st">
+        <option value="">全部状态</option>
+        <option value="normal" {{ 'selected' if st=='normal' }}>正常</option>
+        <option value="suspended" {{ 'selected' if st=='suspended' }}>停借</option>
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">搜索</button></div>
+    <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('reader_list') }}">重置</a></div>
+    <div class="col text-end"><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增读者</button></div>
+  </form>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>卡号</th><th>姓名</th><th>电话</th><th class="text-end">在借/累计</th>
+      <th class="text-end">借阅上限</th><th>状态</th><th>办证日期</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in readers %}
+      <tr>
+        <td class="text-muted small">{{ r.card_no }}</td>
+        <td class="fw-semibold">{{ r.name }}</td>
+        <td>{{ r.phone or '-' }}</td>
+        <td class="text-end">{{ r.out_cnt }} / {{ r.total_cnt }}</td>
+        <td class="text-end">{{ r.borrow_limit }}</td>
+        <td>{% if r.status=='normal' %}<span class="badge text-bg-success">正常</span>
+            {% else %}<span class="badge text-bg-danger">停借</span>{% endif %}</td>
+        <td class="text-muted small">{{ r.created_at[:10] }}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+          <form class="d-inline" method="post" action="{{ url_for('reader_delete', rid=r.id) }}" onsubmit="return confirm('删除读者 {{ r.name }}? 其预约记录将一并清除')">
+            <button class="btn btn-sm btn-outline-danger">删除</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="8" class="text-center text-muted py-4">暂无读者</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('reader_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增读者</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">姓名 *</label><input class="form-control" name="name" required></div>
+      <div class="col-6"><label class="form-label small">卡号 *</label><input class="form-control" name="card_no" placeholder="如 R2026001" required></div>
+      <div class="col-6"><label class="form-label small">电话</label><input class="form-control" name="phone"></div>
+      <div class="col-6"><label class="form-label small">借阅上限</label><input class="form-control" name="borrow_limit" type="number" value="5"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+
+{% if edit_reader %}
+<div class="modal fade" id="edit{{ edit_reader.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('reader_edit', rid=edit_reader.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑读者 {{ edit_reader.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">姓名</label><input class="form-control" name="name" value="{{ edit_reader.name }}" required></div>
+      <div class="col-6"><label class="form-label small">电话</label><input class="form-control" name="phone" value="{{ edit_reader.phone or '' }}"></div>
+      <div class="col-6"><label class="form-label small">借阅上限</label><input class="form-control" name="borrow_limit" type="number" value="{{ edit_reader.borrow_limit }}"></div>
+      <div class="col-6"><label class="form-label small">状态</label>
+        <select class="form-select" name="status">
+          <option value="normal" {{ 'selected' if edit_reader.status=='normal' }}>正常</option>
+          <option value="suspended" {{ 'selected' if edit_reader.status=='suspended' }}>停借</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    {% if edit_reader %}new bootstrap.Modal(document.getElementById('edit{{ edit_reader.id }}')).show();{% endif %}
+  });
+</script>
+{% endblock %}

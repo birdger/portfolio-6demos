@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}套餐管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}套餐管理{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col"><span class="text-muted small">套餐决定租户配额：用户数 / 图书数 / 月度 API 调用量 / 接口限流（次/分钟）。配额超限后：新增被拒、API 返回 429。</span></div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增套餐</button></div>
+  </div>
+</div></div>
+
+<div class="row g-3">
+  {% for r in rows %}
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between">
+        <h5 class="mb-1">{{ r.name }}</h5>
+        <span class="fs-5 fw-bold text-primary">¥{{ r.price_month }}/月</span>
+      </div>
+      <div class="text-muted small mb-3">排序 {{ r.sort }}</div>
+      <table class="table table-sm mb-3">
+        <tr><td class="text-muted">用户数上限</td><td class="text-end">{{ r.user_quota }}</td></tr>
+        <tr><td class="text-muted">图书数上限</td><td class="text-end">{{ r.book_quota }}</td></tr>
+        <tr><td class="text-muted">API 月调用量</td><td class="text-end">{{ r.api_monthly_quota }}</td></tr>
+        <tr><td class="text-muted">接口限流</td><td class="text-end">{{ r.api_rate_per_min }} 次/分钟</td></tr>
+      </table>
+      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+    </div></div>
+  </div>
+  {% else %}<div class="col-12 text-center text-muted py-4">暂无套餐</div>{% endfor %}
+</div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('plan_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增套餐</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">名称 *</label><input class="form-control" name="name" required></div>
+      <div class="col-6"><label class="form-label small">月费(元)</label><input class="form-control" name="price_yuan" type="number" step="1" value="0"></div>
+      <div class="col-6"><label class="form-label small">用户数上限</label><input class="form-control" name="user_quota" type="number" value="10"></div>
+      <div class="col-6"><label class="form-label small">图书数上限</label><input class="form-control" name="book_quota" type="number" value="100"></div>
+      <div class="col-6"><label class="form-label small">API 月调用量</label><input class="form-control" name="api_monthly_quota" type="number" value="1000"></div>
+      <div class="col-6"><label class="form-label small">限流(次/分钟)</label><input class="form-control" name="api_rate_per_min" type="number" value="60"></div>
+      <div class="col-6"><label class="form-label small">排序</label><input class="form-control" name="sort" type="number" value="0"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('plan_edit', pid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑套餐 {{ r.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-6"><label class="form-label small">名称</label><input class="form-control" name="name" value="{{ r.name }}" required></div>
+      <div class="col-6"><label class="form-label small">月费(元)</label><input class="form-control" name="price_yuan" type="number" step="1" value="{{ r.price_month }}"></div>
+      <div class="col-6"><label class="form-label small">用户数上限</label><input class="form-control" name="user_quota" type="number" value="{{ r.user_quota }}"></div>
+      <div class="col-6"><label class="form-label small">图书数上限</label><input class="form-control" name="book_quota" type="number" value="{{ r.book_quota }}"></div>
+      <div class="col-6"><label class="form-label small">API 月调用量</label><input class="form-control" name="api_monthly_quota" type="number" value="{{ r.api_monthly_quota }}"></div>
+      <div class="col-6"><label class="form-label small">限流(次/分钟)</label><input class="form-control" name="api_rate_per_min" type="number" value="{{ r.api_rate_per_min }}"></div>
+      <div class="col-6"><label class="form-label small">排序</label><input class="form-control" name="sort" type="number" value="{{ r.sort }}"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

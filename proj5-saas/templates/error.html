@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}出错了{% endblock %}
+{% block page_title %}出错了{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+  <div style="font-size:64px">{{ code }}</div>
+  <p class="text-muted">{{ msg }}</p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">返回首页</a>
+</div>
+{% endblock %}

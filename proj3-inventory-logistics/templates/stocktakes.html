@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}盘点管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}盘点管理{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col"><span class="text-muted small">盘点流程：创建盘点单（自动按仓库生成账面条目）→ 录入实盘数量 → 提交后系统按差异自动调账并写入库存流水。</span></div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 发起盘点</button></div>
+  </div>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>盘点单号</th><th>仓库</th><th>条目数</th><th class="text-end">差异合计</th><th>状态</th><th>创建时间</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="fw-semibold">{{ r.no }}</td>
+        <td>{{ imap.get(r.warehouse_id, '仓库#' ~ r.warehouse_id) }}</td>
+        <td>{{ r.item_count }}</td>
+        <td class="text-end {{ 'text-danger' if r.diff_total != 0 }}">{{ r.diff_total }}</td>
+        <td>{% if r.status=='draft' %}<span class="badge text-bg-warning">待盘点</span>
+            {% else %}<span class="badge text-bg-success">已完成</span>{% endif %}</td>
+        <td class="small text-muted">{{ r.created_at[:16] }}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('stocktakes') }}?adjust={{ r.id }}">盘点录入</a>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="text-center text-muted py-4">暂无盘点单</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+{% if adjust %}
+<div class="card mt-3"><div class="card-header">盘点录入：{{ adjust.no }}（提交后按差异自动调账）</div>
+  <form method="post" action="{{ url_for('stocktake_adjust', tid=adjust.id) }}">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>商品</th><th class="text-end">账面数</th><th class="text-end">实盘数</th><th class="text-end">差异</th></tr></thead>
+        <tbody>
+        {% for it in adjust.items %}
+          <tr>
+            <td>{{ it.product_name }}<div class="small text-muted">{{ it.product_code }}</div></td>
+            <td class="text-end">{{ it.book_qty }}</td>
+            <td class="text-end"><input class="form-control form-control-sm text-end" style="max-width:110px"
+              name="actual_{{ it.id }}" type="number" value="{{ it.actual_qty if it.actual_qty is not none else it.book_qty }}"></td>
+            <td class="text-end" id="diff_{{ it.id }}">{{ it.diff_qty }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body"><button class="btn btn-sm btn-primary">提交盘点结果</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('stocktake_add') }}">
+    <div class="modal-header"><h5 class="modal-title">发起盘点</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <label class="form-label small">选择仓库 *</label>
+      <select class="form-select" name="warehouse_id" required>
+        {% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}
+      </select>
+      <div class="form-text">系统将自动为该仓库所有在售商品生成盘点头，录入实盘数后提交。</div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+      <button class="btn btn-sm btn-primary">创建盘点单</button></div>
+  </form>
+</div></div></div>
+{% endblock %}

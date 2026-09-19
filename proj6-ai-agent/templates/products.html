@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}商品库 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}商品库 <span class="badge text-bg-light text-dark align-middle fs-6">共 {{ total_all }} 条语料·已导入</span>{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto"><input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="标题 / 品牌 / 描述"></div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="leaf" style="max-width:180px">
+        <option value="">全部主题</option>
+        {% for l in leaves %}<option value="{{ l }}" {{ 'selected' if leaf==l }}>{{ l }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">搜索</button></div>
+    <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('products') }}">重置</a></div>
+    <div class="col text-end">
+      <span class="text-muted small me-2">本次筛选 {{ total }} 条</span>
+      {% if current_user.role=='admin' %}
+      <form class="d-inline" method="post" action="{{ url_for('products_import') }}">
+        <div class="input-group input-group-sm d-inline-flex" style="width:auto">
+          <span class="input-group-text">导入</span>
+          <input class="form-control" name="limit" type="number" min="1" max="3000" value="300" style="width:80px">
+          <button class="btn btn-sm btn-outline-primary">重新导入语料</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </form>
+</div></div>
+
+<div class="row g-3">
+  {% for r in rows %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between">
+        <a class="fw-semibold text-decoration-none" href="{{ url_for('product_detail', pid=r.id) }}">{{ r.title }}</a>
+        {% if r.enriched %}<span class="badge text-bg-success" style="height:fit-content">已富化</span>{% endif %}
+      </div>
+      <div class="text-muted small my-1">
+        <span class="badge text-bg-light text-dark">{{ r.leaf_category or r.main_category or '通用' }}</span>
+        {% if r.brand %}<span class="ms-1">{{ r.brand }}</span>{% endif %}
+      </div>
+      <div class="small text-muted text-truncate">{{ r.description[:80] or '' }}</div>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span class="text-danger fw-bold">¥{{ '%.2f'|format((r.price_fen or 0)/100) }}</span>
+        <span class="small text-muted">{{ '%.1f'|format(r.rating or 0) }}★ ({{ r.rating_count or 0 }})</span>
+      </div>
+      <div class="small text-muted">ASIN: {{ r.asin }}</div>
+    </div></div>
+  </div>
+  {% else %}<div class="col-12 text-center text-muted py-5">暂无商品，点右上角「导入语料」</div>{% endfor %}
+</div>
+
+{% if pages > 1 %}<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
+  {% for p in range(1, pages+1) %}
+  <li class="page-item {{ 'active' if p==page }}"><a class="page-link" href="{{ url_for('products', page=p, q=q, leaf=leaf) }}">{{ p }}</a></li>
+  {% endfor %}
+</ul></nav>{% endif %}
+{% endblock %}

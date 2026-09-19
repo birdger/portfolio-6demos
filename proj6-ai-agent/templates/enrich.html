@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}智能富化 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}智能富化{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">商品总数</div><div class="fs-4 fw-bold">{{ stats.total }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">已富化</div><div class="fs-4 fw-bold">{{ stats.done }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">LLM / 规则兜底</div><div class="fs-4 fw-bold">{{ stats.llm }} / {{ stats.rule }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">富化成本(分)</div><div class="fs-4 fw-bold">{{ stats.cost }}</div></div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-body py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <span class="text-muted small">LLM 生成卖点/标签/人群/场景；模型不可用时自动降级为规则模板（mode=rule，已标注）。富化结果可在商品详情页人工修正。</span>
+    </div>
+    <div class="col-auto">
+      <form class="d-inline" method="post" action="{{ url_for('enrich_run') }}">
+        <select class="form-select form-select-sm d-inline-block" name="n" style="width:120px">
+          <option value="5">5 条</option><option value="10">10 条</option><option value="20">20 条</option>
+        </select>
+        <button class="btn btn-sm btn-primary">批量富化</button>
+      </form>
+    </div>
+  </div>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>商品</th><th>主题</th><th>最新富化</th><th>模式</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('product_detail', pid=r.id) }}">{{ r.title }}</a>
+          <div class="small text-muted">{{ r.asin }}</div></td>
+        <td><span class="badge text-bg-light text-dark">{{ r.leaf_category or r.main_category or '-' }}</span></td>
+        <td class="small">{{ '已富化' if r.enriched else '待富化' }}</td>
+        <td>{% if r.enriched %}<span class="badge text-bg-success">done</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('product_detail', pid=r.id) }}">查看</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

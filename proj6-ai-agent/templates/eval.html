@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}评测中心 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}评测中心{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">评测用例</div><div class="fs-4 fw-bold">{{ stats.cases }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">域内</div><div class="fs-4 fw-bold">{{ stats.in_domain }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-warning"><div class="card-body py-2"><div class="small opacity-75">域外(拒答测试)</div><div class="fs-4 fw-bold">{{ stats.out_domain }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">历史批次</div><div class="fs-4 fw-bold">{{ stats.batches }}</div></div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <span class="text-muted small">
+        指标口径：<b>Hit@K</b>=期望 ASIN 至少一个落在检索 Top-K → 1；<b>引用准确率</b>=回答中的 ASIN 全部 ∈ 检索结果 → 1；
+        <b>拒答正确率</b>=域外用例中正确拒答的比例。期望值为「类目下评分 Top-5 ASIN」的<b>客观标签</b>，与检索索引无关。
+      </span>
+    </div>
+    <div class="col-auto">
+      <a class="btn btn-sm btn-primary" href="{{ url_for('eval_run') }}" onclick="return confirm('启动评测: 20 用例 × 2 模型, 后台串行执行约 1-3 分钟')">🚀 发起评测</a>
+    </div>
+  </div>
+</div></div>
+
+<div class="card mb-3"><div class="card-header">用例清单（期望值可展开核对）</div><div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>#</th><th>类型</th><th>问题</th><th>主题</th><th>期望 ASIN</th></tr></thead>
+    <tbody>
+    {% for c in cases %}
+      <tr>
+        <td class="text-muted">{{ c.id }}</td>
+        <td>{% if c.kind=='in_domain' %}<span class="badge text-bg-success">域内</span>{% else %}<span class="badge text-bg-warning">域外</span>{% endif %}</td>
+        <td class="small">{{ c.question }}</td>
+        <td class="small text-muted">{{ c.category or '-' }}</td>
+        <td class="small text-muted">{{ c.expected_asins[:40] or '-' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-center text-muted py-3">暂无用例，请先运行 seed</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="card"><div class="card-header">历史批次</div><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>批次</th><th>模型A</th><th>模型B</th><th>状态</th><th>时间</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for b in batches %}
+      <tr>
+        <td class="fw-semibold">{{ b.name }}</td>
+        <td class="small">{{ b.model_a }}</td>
+        <td class="small">{{ b.model_b }}</td>
+        <td>{% if b.status=='running' %}<span class="badge text-bg-warning">运行中</span>
+            {% elif b.status=='done' %}<span class="badge text-bg-success">完成</span>
+            {% else %}<span class="badge text-bg-danger">失败</span>{% endif %}</td>
+        <td class="small text-muted">{{ b.created_at[:16] }}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('eval_batch', bid=b.id) }}">明细</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('eval_report', bid=b.id) }}">报告</a>
+          <a class="btn btn-sm btn-outline-info" href="{{ url_for('eval_report_md', bid=b.id) }}">MD</a>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="text-center text-muted py-3">暂无批次</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

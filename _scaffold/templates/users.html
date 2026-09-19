@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}用户管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>用户列表 ({{ users|length }})</span>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增用户</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>ID</th><th>用户名</th><th>显示名</th><th>角色</th><th>创建时间</th><th class="text-end">操作</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.display_name }}</td>
+          <td><span class="badge {{ 'text-bg-danger' if u.role=='admin' else 'text-bg-secondary' if u.role=='operator' else 'text-bg-light text-dark' }}">{{ ROLE_LABELS.get(u.role, u.role) }}</span></td>
+          <td class="text-muted small">{{ u.created_at }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#edit{{ u.id }}">编辑</button>
+            <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reset{{ u.id }}">重置密码</button>
+            {% if u.id != current_user.id %}
+            <form class="d-inline" method="post" action="{{ url_for('user_delete', uid=u.id) }}" onsubmit="return confirm('确认删除 {{ u.display_name }}?')">
+              <button class="btn btn-sm btn-outline-danger">删除</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 新增 -->
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('user_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增用户</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-2"><label class="form-label small">用户名</label><input class="form-control" name="username" required></div>
+      <div class="mb-2"><label class="form-label small">显示名</label><input class="form-control" name="display_name"></div>
+      <div class="mb-2"><label class="form-label small">密码</label><input class="form-control" type="password" name="password" required></div>
+      <div><label class="form-label small">角色</label>
+        <select class="form-select" name="role">
+          <option value="user">普通用户</option><option value="operator">操作员</option><option value="admin">管理员</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">创建</button></div>
+  </form>
+</div></div></div>
+
+{% for u in users %}
+<div class="modal fade" id="edit{{ u.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('user_edit', uid=u.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑 {{ u.username }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-2"><label class="form-label small">显示名</label><input class="form-control" name="display_name" value="{{ u.display_name }}"></div>
+      <div><label class="form-label small">角色</label>
+        <select class="form-select" name="role">
+          {% for r, l in ROLE_LABELS.items() %}<option value="{{ r }}" {{ 'selected' if u.role==r }}>{{ l }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+
+<div class="modal fade" id="reset{{ u.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('user_reset', uid=u.id) }}">
+    <div class="modal-header"><h5 class="modal-title">重置密码 - {{ u.username }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><label class="form-label small">新密码</label><input class="form-control" name="password" value="123456"></div>
+    <div class="modal-footer"><button class="btn btn-warning">重置</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

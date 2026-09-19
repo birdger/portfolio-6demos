@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}供应商管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}供应商管理{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-2 d-flex justify-content-between align-items-center">
+    <span class="text-muted small">共 {{ rows|length }} 家供应商 · 采购金额含已收货/已付款采购单</span>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ 新增供应商</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr>
+        <th>#</th><th>供应商名称</th><th>联系人</th><th>电话</th><th>地址</th>
+        <th class="text-end">采购单数</th><th class="text-end">累计采购额</th><th>状态</th><th class="text-end">操作</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="text-muted small">{{ r.id }}</td>
+          <td class="fw-semibold">{{ r.name }}</td>
+          <td>{{ r.contact or '-' }}</td>
+          <td class="small">{{ r.phone or '-' }}</td>
+          <td class="small text-muted">{{ r.address or '-' }}</td>
+          <td class="text-end">{{ r.po_count }}</td>
+          <td class="text-end">¥{{ '%.2f'|format(r.cost/100) }}</td>
+          <td>{% if r.status == 'on' %}<span class="badge text-bg-success">合作中</span>
+              {% else %}<span class="badge text-bg-secondary">已停用</span>{% endif %}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ r.id }}">编辑</button>
+            <form class="d-inline" method="post" action="{{ url_for('supplier_delete', sid=r.id) }}" onsubmit="return confirm('确认删除?')">
+              <button class="btn btn-sm btn-outline-danger">删除</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="addModal"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('supplier_add') }}">
+    <div class="modal-header"><h5 class="modal-title">新增供应商</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-12"><label class="form-label small">供应商名称 *</label><input class="form-control" name="name" required></div>
+      <div class="col-md-6"><label class="form-label small">联系人</label><input class="form-control" name="contact"></div>
+      <div class="col-md-6"><label class="form-label small">联系电话</label><input class="form-control" name="phone"></div>
+      <div class="col-12"><label class="form-label small">地址</label><input class="form-control" name="address"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">创建</button></div>
+  </form>
+</div></div></div>
+
+{% for r in rows %}
+<div class="modal fade" id="edit{{ r.id }}"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" action="{{ url_for('supplier_edit', sid=r.id) }}">
+    <div class="modal-header"><h5 class="modal-title">编辑 {{ r.name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+      <div class="col-12"><label class="form-label small">供应商名称</label><input class="form-control" name="name" value="{{ r.name }}"></div>
+      <div class="col-md-6"><label class="form-label small">联系人</label><input class="form-control" name="contact" value="{{ r.contact or '' }}"></div>
+      <div class="col-md-6"><label class="form-label small">联系电话</label><input class="form-control" name="phone" value="{{ r.phone or '' }}"></div>
+      <div class="col-12"><label class="form-label small">地址</label><input class="form-control" name="address" value="{{ r.address or '' }}"></div>
+      <div class="col-md-6"><label class="form-label small">状态</label>
+        <select class="form-select" name="status">
+          <option value="on" {{ 'selected' if r.status=='on' }}>合作中</option>
+          <option value="off" {{ 'selected' if r.status=='off' }}>已停用</option>
+        </select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">保存</button></div>
+  </form>
+</div></div></div>
+{% endfor %}
+{% endblock %}

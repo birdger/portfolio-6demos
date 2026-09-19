@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}运单管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}运单管理{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% for k, label in [('created','已建单'),('picked','已揽收'),('in_transit','运输中'),('delivering','派送中'),('signed','已签收'),('exception','异常')] %}
+  <div class="col-6 col-md-2"><div class="card text-bg-{{ 'secondary' if k=='created' else ('primary' if k=='picked' else ('info' if k=='in_transit' else ('warning' if k=='delivering' else ('success' if k=='signed' else 'danger'))) }}"><div class="card-body py-2">
+    <div class="small opacity-75">{{ label }}</div><div class="fs-4 fw-bold">{{ stat.get(k, 0) }}</div>
+  </div></div></div>
+  {% endfor %}
+</div>
+
+<div class="card mb-3"><div class="card-body py-2">
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="status">
+        <option value="">全部状态</option>
+        {% for k, (label, _) in WB_STATUS.items() %}
+        <option value="{{ k }}" {{ 'selected' if status==k }}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">筛选</button></div>
+    <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('waybills') }}">重置</a></div>
+    <div class="col text-end">
+      <span class="text-muted small">发货后自动生成运单（承运方：宅急送）</span>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('sales') }}">去销售单发货</a>
+    </div>
+  </form>
+</div></div>
+
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>运单号</th><th>关联销售单</th><th>收货人</th><th>金额(元)</th>
+      <th>当前状态</th><th>创建时间</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="fw-semibold"><a href="{{ url_for('waybill_detail', wb_id=r.id) }}">{{ r.no }}</a></td>
+        <td class="small">{{ r.so_no or '-' }}</td>
+        <td>{{ r.receiver or '-' }}</td>
+        <td class="text-end">¥{{ '%.2f'|format((r.total_amount or 0)/100) }}</td>
+        <td>{% set st = WB_STATUS.get(r.status, (r.status, 'text-bg-secondary')) %}
+          <span class="badge {{ st[1] }}">{{ st[0] }}</span></td>
+        <td class="small text-muted">{{ r.created_at[:16] }}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('waybill_detail', wb_id=r.id) }}">轨迹</a>
+          {% if r.status not in ('signed', 'exception') %}
+          <form class="d-inline" method="post" action="{{ url_for('waybill_advance', wb_id=r.id) }}">
+            <button class="btn btn-sm btn-outline-primary">推进一站</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="text-center text-muted py-4">暂无运单</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

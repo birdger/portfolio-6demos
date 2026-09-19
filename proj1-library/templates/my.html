@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}我的借阅 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}我的借阅{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">在借</div><div class="fs-4 fw-bold">{{ out_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-danger"><div class="card-body py-2"><div class="small opacity-75">逾期</div><div class="fs-4 fw-bold">{{ overdue_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-warning"><div class="card-body py-2"><div class="small opacity-75">未缴罚款(元)</div><div class="fs-4 fw-bold">{{ '%.2f'|format(fine_unpaid/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">读者卡</div><div class="fs-5 fw-semibold">{{ reader.card_no if reader else '-' }}</div></div></div></div>
+</div>
+
+{% if not reader %}
+<div class="alert alert-warning">
+  你的账号还没有关联读者卡。请选择读者卡绑定：
+  <form class="row g-2 mt-2" method="get">
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="bind">
+        {% for r in readers %}<option value="{{ r.id }}">{{ r.name }}（{{ r.card_no }}）</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary">绑定</button></div>
+  </form>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-header">借阅记录</div><div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>图书</th><th>作者</th><th>借出</th><th>应还</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for r in borrows %}
+          <tr>
+            <td>{{ r.title }}</td>
+            <td class="text-muted small">{{ r.author or '-' }}</td>
+            <td class="small">{{ r.borrow_date[:10] }}</td>
+            <td class="small {{ 'text-danger fw-semibold' if r.status=='overdue' }}">{{ r.due_date[:10] }}</td>
+            <td>
+              {% if r.status=='borrowed' %}<span class="badge text-bg-primary">借阅中</span>
+              {% elif r.status=='overdue' %}<span class="badge text-bg-danger">逾期</span>
+              {% elif r.status=='returned' %}<span class="badge text-bg-success">已归还</span>
+              {% else %}<span class="badge text-bg-dark">挂失</span>{% endif %}
+            </td>
+          </tr>
+        {% else %}<tr><td colspan="5" class="text-center text-muted py-3">暂无借阅</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header">我的预约</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>图书</th><th>作者</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for r in resv %}
+          <tr>
+            <td>{{ r.title }}</td>
+            <td class="text-muted small">{{ r.author or '-' }}</td>
+            <td>{% if r.status=='waiting' %}<span class="badge text-bg-warning">排队中</span>
+                {% elif r.status=='ready' %}<span class="badge text-bg-success">可领书</span>
+                {% elif r.status=='done' %}<span class="badge text-bg-primary">已完成</span>
+                {% else %}<span class="badge text-bg-secondary">已取消</span>{% endif %}</td>
+          </tr>
+        {% else %}<tr><td colspan="3" class="text-center text-muted py-3">暂无预约</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

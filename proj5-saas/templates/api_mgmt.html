@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}API 管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}API 管理（{{ t.name }}）{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-primary"><div class="card-body py-2"><div class="small opacity-75">本月调用</div><div class="fs-4 fw-bold">{{ usage.api_calls }} / {{ t.api_monthly_quota }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">成功</div><div class="fs-4 fw-bold">{{ ok_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-danger"><div class="card-body py-2"><div class="small opacity-75">失败(≥400)</div><div class="fs-4 fw-bold">{{ err_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">限流窗口</div><div class="fs-6">{{ bucket.count if bucket else 0 }}/{{ t.api_rate_per_min }} 次/分钟</div></div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-header">API Key</div><div class="card-body">
+  <div class="d-flex align-items-center gap-3">
+    <code class="fs-6">{{ key_mask }}</code>
+    <form class="d-inline" method="post" action="{{ url_for('api_reveal') }}" onsubmit="return confirm('完整 Key 只会加密传给当前浏览器显示一次')">
+      <button class="btn btn-sm btn-outline-secondary">查看完整 Key</button>
+    </form>
+    <form class="d-inline" method="post" action="{{ url_for('api_rotate') }}" onsubmit="return confirm('轮换后旧 Key 立即失效，请同步更新接入方')">
+      <button class="btn btn-sm btn-outline-danger">轮换 Key</button>
+    </form>
+  </div>
+  <div class="text-muted small mt-2">
+    调用方式：<code>GET /api/v1/books?api_key=&lt;key&gt;</code> 或请求头 <code>X-API-Key: &lt;key&gt;</code>。
+    超出套餐限流返回 <code>429</code> + <code>Retry-After</code>；Key 无效返回 <code>401</code>；访问他租户资源返回 <code>404</code>。
+  </div>
+</div></div>
+
+<div class="card"><div class="card-header">最近调用（30 条）</div><div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>时间</th><th>路径</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for r in logs %}
+      <tr><td class="small text-muted">{{ r.created_at[:19] }}</td><td class="small">{{ r.path }}</td>
+        <td>{% if r.status_code < 400 %}<span class="badge text-bg-success">{{ r.status_code }}</span>
+            {% else %}<span class="badge text-bg-danger">{{ r.status_code }}</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="3" class="text-center text-muted py-3">暂无调用记录</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

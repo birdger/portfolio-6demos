@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}API 测试台 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}API 测试台{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body">
+  <div class="text-muted small mb-3">
+    当前 Key（API 管理页可查看完整值 / 轮换）：
+    <code>{{ key_mask }}</code>
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <label class="form-label small">完整 API Key</label>
+      <input class="form-control mb-3" id="apikey" placeholder="粘贴 API Key（或在 api 管理页点「查看完整 Key」后复制）">
+      <label class="form-label small">接口</label>
+      <select class="form-select mb-3" id="endpoint">
+        <option value="books">GET /api/v1/books（本租户图书列表）</option>
+        <option value="borrows">GET /api/v1/borrows（本租户借阅列表）</option>
+        <option value="usage">GET /api/v1/usage（配额用量）</option>
+      </select>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-primary" id="runBtn">发送请求</button>
+        <span class="text-muted small" id="meta"></span>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <label class="form-label small">响应</label>
+      <pre class="bg-dark text-light p-3 rounded" id="resp" style="min-height:220px;max-height:420px;overflow:auto">{}</pre>
+    </div>
+  </div>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('runBtn').addEventListener('click', async function () {
+    const key = document.getElementById('apikey').value.trim();
+    const ep = document.getElementById('endpoint').value;
+    const box = document.getElementById('resp'), meta = document.getElementById('meta');
+    const t0 = performance.now();
+    try {
+      const resp = await fetch('/api/v1/' + ep + '?api_key=' + encodeURIComponent(key));
+      const body = await resp.text();
+      const ms = Math.round(performance.now() - t0);
+      meta.textContent = 'HTTP ' + resp.status + ' · ' + ms + 'ms' +
+        (resp.headers.get('Retry-After') ? ' · Retry-After: ' + resp.headers.get('Retry-After') : '');
+      let pretty = body;
+      try { pretty = JSON.stringify(JSON.parse(body), null, 2); } catch (e) {}
+      box.textContent = pretty;
+    } catch (e) {
+      meta.textContent = '请求失败';
+      box.textContent = String(e);
+    }
+  });
+</script>
+{% endblock %}

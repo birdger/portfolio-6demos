@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}购物车 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}购物车{% endblock %}
+{% block content %}
+{% if not rows %}
+<div class="text-center text-muted py-5">
+  <div class="fs-1 mb-2">🛒</div>购物车是空的<br>
+  <a class="btn btn-sm btn-primary mt-3" href="{{ url_for('home') }}">去逛逛</a>
+</div>
+{% else %}
+<form method="post" action="{{ url_for('checkout') }}">
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>商品</th><th>规格</th><th class="text-end">单价(元)</th><th class="text-end">数量</th><th class="text-end">小计(元)</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('product_detail', pid=r.product_id) }}">{{ r.title }}</a>
+          {% if r.avail <= 0 %}<span class="badge text-bg-danger ms-2">缺货</span>{% endif %}</td>
+        <td class="small text-muted">{{ r.color or '' }}{{ ' / ' if r.color and r.size }}{{ r.size or '' }}</td>
+        <td class="text-end">¥{{ '%.2f'|format(r.price/100) }}</td>
+        <td class="text-end">
+          <form class="d-inline" method="post" action="{{ url_for('cart_update') }}">
+            <input type="hidden" name="cart_id" value="{{ r.id }}">
+            <div class="input-group input-group-sm justify-content-end" style="max-width:150px">
+              <input class="form-control text-center" name="qty" type="number" min="0" max="{{ r.avail if r.avail>0 else r.qty }}" value="{{ r.qty }}" style="width:64px">
+              <button class="btn btn-outline-secondary">更新</button>
+            </div>
+          </form>
+        </td>
+        <td class="text-end fw-semibold">¥{{ '%.2f'|format(r.price*r.qty/100) }}</td>
+        <td class="text-end">
+          <form class="d-inline" method="post" action="{{ url_for('cart_update') }}">
+            <input type="hidden" name="cart_id" value="{{ r.id }}"><input type="hidden" name="qty" value="0">
+            <button class="btn btn-sm btn-outline-danger">移除</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="card mt-3"><div class="card-body">
+  <div class="row g-3 align-items-center">
+    <div class="col-md-4">
+      <label class="form-label small">优惠券（满减与折扣互斥，一单一张）</label>
+      <select class="form-select" name="coupon_id">
+        <option value="">不使用优惠券</option>
+        {% for u in coupons %}
+        <option value="{{ u.id }}">
+          {{ u.title }}{% if u.type=='full_reduce' %}(满 {{ '%.0f'|format(u.threshold/100) }} 减 {{ '%.0f'|format(u.value/100) }}){% else %}({{ u.value }} 折){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label small">收货人 / 地址</label>
+      <div class="row g-2">
+        <div class="col-4"><input class="form-control form-control-sm" name="receiver" placeholder="收货人" value="{{ current_user.display_name }}"></div>
+        <div class="col-8"><input class="form-control form-control-sm" name="address" placeholder="收货地址" value="北京市海淀区 1 号"></div>
+      </div>
+    </div>
+    <div class="col-md-3 text-md-end">
+      <div class="small text-muted">合计 <span class="fs-5 text-danger fw-bold">¥{{ '%.2f'|format(total/100) }}</span></div>
+      <button class="btn btn-primary w-100 mt-1">提交订单</button>
+    </div>
+  </div>
+</div></div>
+</form>
+{% endif %}
+{% endblock %}

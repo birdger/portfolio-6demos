@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}评测报告 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}评测报告 {% if b.status != 'running' %}<a class="btn btn-sm btn-outline-info align-middle" href="{{ url_for('eval_report_md', bid=b.id) }}">⬇ 下载 Markdown</a>{% endif %}{% endblock %}
+{% block content %}
+{% if offline %}
+<div class="alert alert-danger py-2 small fw-semibold">⚠️ 本次评测运行于<b>离线兜底模式</b>（LLM 不可用），指标不代表真实模型能力。</div>
+{% endif %}
+
+<div class="card mb-3"><div class="card-body">
+  <h5 class="mb-1">{{ b.name }}</h5>
+  <div class="text-muted small">状态：{{ b.status }} · 创建 {{ b.created_at }} · 完成 {{ b.finished_at or '-' }}</div>
+  {% if b.summary %}<pre class="small mt-2 mb-0 text-wrap" style="white-space:pre-wrap">{{ b.summary[:600] }}</pre>{% endif %}
+</div></div>
+
+<div class="card mb-3"><div class="card-header">指标总览（Hit@K=域内用例；引用准确率/拒答正确率=全部用例口径）</div><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>模型</th><th class="text-end">用例数</th><th class="text-end">Hit@K</th>
+      <th class="text-end">引用准确率</th><th class="text-end">拒答正确率</th>
+      <th class="text-end">平均延迟(ms)</th><th class="text-end">总 tokens</th><th class="text-end">总成本(分)</th></tr></thead>
+    <tbody>
+    {% for m, v in summary.items() %}
+      {% if v.get('n', 0) %}
+      <tr>
+        <td class="fw-semibold">{{ m }}</td>
+        <td class="text-end">{{ v.n }}</td>
+        <td class="text-end">{{ '%.1f%%'|format(v.hit*100) if v.hit is not none else '-' }}</td>
+        <td class="text-end">{{ '%.1f%%'|format(v.cite*100) }}</td>
+        <td class="text-end">{{ '%.1f%%'|format(v.refused*100) if v.refused is not none else '-' }}</td>
+        <td class="text-end">{{ '%.0f'|format(v.latency) }}</td>
+        <td class="text-end">{{ v.tokens }}</td>
+        <td class="text-end">{{ v.cost }}</td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+<div class="small text-muted mb-3">说明：Hit@K 只统计域内用例（期望 ASIN 为对应类目下评分 Top-5 的客观标签）；域外用例(3 条)用于衡量拒答正确率——正确拒答 = 不编造商品。</div>
+
+<div class="card"><div class="card-header">逐条用例原文</div><div class="card-body">
+  {% for cid, c in cases.items() %}
+  <div class="border rounded p-3 mb-3">
+    <div class="small mb-2">
+      <span class="badge {{ 'text-bg-success' if c.kind=='in_domain' else 'text-bg-warning' }}">#{{ c.id }} {{ '域内' if c.kind=='in_domain' else '域外' }}</span>
+      <b>{{ c.question }}</b>
+      {% if c.expected_asins %}<div class="text-muted mt-1">期望 ASIN：{{ c.expected_asins }}</div>{% endif %}
+    </div>
+    {% for r in runs %}
+      {% if r.case_id == c.id %}
+      <div class="border-top pt-2 mt-2">
+        <div class="small d-flex flex-wrap gap-2 align-items-center">
+          <span class="fw-semibold">{{ r.model }}</span>
+          {% if r.mode=='llm' %}<span class="badge text-bg-success">llm</span>{% else %}<span class="badge text-bg-secondary">offline</span>{% endif %}
+          <span class="badge {{ 'text-bg-success' if r.hit else 'text-bg-secondary' }}">hit={{ r.hit }}</span>
+          <span class="badge {{ 'text-bg-success' if r.citation_ok else 'text-bg-secondary' }}">cite={{ r.citation_ok }}</span>
+          {% if r.refused %}<span class="badge text-bg-warning">拒答✓</span>{% endif %}
+          <span class="text-muted">{{ r.latency_ms }}ms · {{ r.prompt_tokens+r.completion_tokens }}tok · {{ r.cost_fen }}分</span>
+        </div>
+        <pre class="small mt-1 mb-0 bg-light p-2 rounded text-wrap" style="white-space:pre-wrap">{{ r.answer or '(无回答)' }}</pre>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div></div>
+{% endblock %}

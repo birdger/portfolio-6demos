@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}配额用量 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}配额用量（{{ t.name }}）{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% for k, label, unit in [('users','用户','人'),('books','图书','本'),('api_calls','API 调用','次')] %}
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">{{ label }}用量</span>
+          <span class="fw-semibold {% if over.get(k) %}text-danger{% endif %}">
+            {{ usage.get(k, 0) }} / {{ {'users': t.user_quota, 'books': t.book_quota, 'api_calls': t.api_monthly_quota}.get(k) }} {{ unit }}</span>
+        </div>
+        <div class="progress" style="height:14px">
+          <div class="progress-bar {{ 'bg-danger' if pcts.get(k, 0) >= 100 else ('bg-warning' if pcts.get(k, 0) >= 80 else 'bg-success') }}"
+               style="width: {{ [pcts.get(k, 0), 100]|min }}%"></div>
+        </div>
+        <div class="small text-muted mt-1">{{ '%.1f'|format(pcts.get(k, 0)) }}% 已用
+          {% if over.get(k) %}<span class="text-danger fw-semibold">已超限</span>{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-header">本月 API 调用趋势</div><div class="card-body">
+      <div id="dailyChart" style="height:260px"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-header">套餐参考</div><div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>套餐</th><th class="text-end">用户</th><th class="text-end">图书</th><th class="text-end">API/月</th><th class="text-end">月费</th></tr></thead>
+        <tbody>
+        {% for p in plans %}
+          <tr class="{{ 'table-primary' if t.plan_id==p.id }}">
+            <td>{{ p.name }}{% if t.plan_id==p.id %}<span class="badge text-bg-primary ms-1">当前</span>{% endif %}</td>
+            <td class="text-end">{{ p.user_quota }}</td>
+            <td class="text-end">{{ p.book_quota }}</td>
+            <td class="text-end">{{ p.api_monthly_quota }}</td>
+            <td class="text-end">¥{{ p.price_month }}</td>
+          </tr>
+        {% else %}<tr><td colspan="5" class="text-center text-muted py-3">暂无套餐</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+  const daily = {{ daily|tojson }};
+  echarts.init(document.getElementById('dailyChart')).setOption({
+    tooltip: {trigger: 'axis'},
+    grid: {left: 40, right: 12, top: 16, bottom: 24},
+    xAxis: {type: 'category', data: daily.map(x => x.d.slice(5))},
+    yAxis: {type: 'value', minInterval: 1},
+    series: [{type: 'bar', data: daily.map(x => x.c), itemStyle: {color: '#6366f1'}}]
+  });
+</script>
+{% endblock %}

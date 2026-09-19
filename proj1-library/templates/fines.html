@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}罚款管理 - {{ APP_NAME }}{% endblock %}
+{% block page_title %}罚款管理{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3 col-6"><div class="card text-bg-danger"><div class="card-body py-2"><div class="small opacity-75">待缴笔数</div><div class="fs-4 fw-bold">{{ stat.unpaid_cnt }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-warning"><div class="card-body py-2"><div class="small opacity-75">待缴金额(元)</div><div class="fs-4 fw-bold">{{ '%.2f'|format(stat.unpaid_sum/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card text-bg-success"><div class="card-body py-2"><div class="small opacity-75">已缴金额(元)</div><div class="fs-4 fw-bold">{{ '%.2f'|format(stat.paid_sum/100) }}</div></div></div></div>
+  <div class="col-md-3 col-6"><div class="card"><div class="card-body py-2"><div class="text-muted small">逾期单数</div><div class="fs-4 fw-bold">{{ stat.overdue_cnt }}</div></div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-header">逾期未还清单（罚款按 0.5 元/天累计，管理员收讫后标记结清）</div><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>图书</th><th>读者</th><th>应还日期</th><th class="text-end">逾期罚款(元)</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in overdue_list %}
+      <tr class="table-danger">
+        <td>{{ r.title }}</td>
+        <td>{{ r.rname }}<div class="small text-muted">{{ r.card_no }}</div></td>
+        <td class="text-danger fw-semibold">{{ r.due_date[:10] }}</td>
+        <td class="text-end text-danger fw-semibold">{{ '%.2f'|format(r.fine/100) }}</td>
+        <td class="text-end"><span class="badge text-bg-danger">逾期中</span></td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="text-center text-muted py-3">没有逾期记录 🎉</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="card"><div class="card-header">待缴罚款</div><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>图书</th><th>读者</th><th class="text-end">金额(元)</th><th class="text-end">操作</th></tr></thead>
+    <tbody>
+    {% for r in unpaid %}
+      <tr>
+        <td>{{ r.title }}</td>
+        <td>{{ r.rname }}（{{ r.card_no }}）</td>
+        <td class="text-end fw-semibold text-danger">{{ '%.2f'|format(r.fine/100) }}</td>
+        <td class="text-end">
+          <form class="d-inline" method="post" action="{{ url_for('fine_pay', bid=r.id) }}">
+            <button class="btn btn-sm btn-outline-success">收款结清</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="4" class="text-center text-muted py-3">没有待缴罚款</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+
+<div class="card mt-3"><div class="card-header">已结清（最近 50 笔）</div><div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr><th>图书</th><th>读者</th><th class="text-end">金额(元)</th><th>结清时间</th></tr></thead>
+    <tbody>
+    {% for r in paid %}
+      <tr>
+        <td>{{ r.title }}</td>
+        <td>{{ r.rname }}（{{ r.card_no }}）</td>
+        <td class="text-end text-success">{{ '%.2f'|format(r.fine/100) }}</td>
+        <td class="small text-muted">{{ r.fine_paid_at[:16] if r.fine_paid_at else '已结清' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="4" class="text-center text-muted py-3">暂无记录</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}
